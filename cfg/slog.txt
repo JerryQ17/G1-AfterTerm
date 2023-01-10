@@ -1,0 +1,633 @@
+ServerInit: Program start at Sat Jan 07 19:57:30 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 596 bind success(port 1234), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success
+SocketReceive: receive success(len = -1)
+ServerQuit: Program quit with code 0 at Sat Jan 07 19:57:35 2023
+
+ServerInit: Program start at Sat Jan 07 19:59:01 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 596 bind success(port 1234), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success
+SocketReceive: receive success(len = -1)
+ServerQuit: Program quit with code 0 at Sat Jan 07 19:59:03 2023
+
+ServerInit: Program start at Sat Jan 07 20:02:02 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 656 bind success(port 1234), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success
+SocketReceive: receive failed, return -1, code 10038
+ServerQuit: Program quit with code 0 at Sat Jan 07 20:02:05 2023
+
+ServerInit: Program start at Sat Jan 07 20:05:48 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 640 bind success(port 1234), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success
+SocketReceive: receive success(len = 3)
+ServerQuit: Program quit with code 0 at Sat Jan 07 20:05:53 2023
+
+ServerInit: Program start at Sat Jan 07 20:34:07 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 50012), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 20:34:30 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 596 bind success(port 50013), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 20:35:45 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 50013), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 20:40:15 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 652 bind success(port 50013), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 20:41:38 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 616 bind success(port 50013), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 20:42:11 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 50013), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 20:42:27 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 640 bind success(port 50013), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 20:43:29 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 628 bind success(port 50013), current socket num = 1
+SocketListen: listen failed, return -1, code 10022
+SocketAccept: accept failed, return -117442584, code 10022
+SocketReceive: receive failed, return -1, code 10038
+ServerQuit: Program quit with code 0 at Sat Jan 07 20:43:29 2023
+
+ServerInit: Program start at Sat Jan 07 20:45:47 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 248 bind success(port 50013), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 20:56:28 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 50013), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 20:59:50 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 640 bind success(port 50013), current socket num = 1
+SocketListen: listen success
+SocketCreate: socket 644 bind success(port 50013), current socket num = 2
+ServerInit: Program start at Sat Jan 07 21:08:00 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 640 bind success(port 50013), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 23:35:35 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 640 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 23:35:57 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 23:36:12 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 23:36:50 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 1025), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 23:41:07 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 592 bind success(port 1025), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Sat Jan 07 23:42:34 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc648)(port652) cli(soc0)(port849872736)
+SocketReceive: receive success(len = 5)
+SocketSend: send success(len = 5)
+ServerQuit: Program quit with code 0 at Sat Jan 07 23:42:40 2023
+
+ServerInit: Program start at Sun Jan 08 18:51:00 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 656 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc656)(port660) cli(soc660)(port384)
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, over step
+ServerQuit: Program quit with code 4 at Sun Jan 08 18:52:44 2023
+
+ServerInit: Program start at Sun Jan 08 18:56:51 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 672 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc672)(port676) cli(soc676)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 4)
+ServerQuit: Program quit with code 0 at Sun Jan 08 18:57:02 2023
+
+ServerInit: Program start at Sun Jan 08 19:00:52 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc648)(port660) cli(soc660)(port384)
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, over step
+ServerQuit: Program quit with code 4 at Sun Jan 08 19:02:01 2023
+
+ServerInit: Program start at Sun Jan 08 19:02:47 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 640 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc640)(port644) cli(soc644)(port384)
+ServerInit: Program start at Sun Jan 08 19:03:05 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 640 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc640)(port648) cli(soc648)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 4)
+ServerQuit: Program quit with code 0 at Sun Jan 08 19:03:33 2023
+
+ServerInit: Program start at Sun Jan 08 19:06:40 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 592 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc592)(port660) cli(soc660)(port384)
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, over step
+ServerQuit: Program quit with code 4 at Sun Jan 08 19:07:20 2023
+
+ServerInit: Program start at Sun Jan 08 19:07:36 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc648)(port652) cli(soc652)(port384)
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, over step
+ServerQuit: Program quit with code 4 at Sun Jan 08 19:08:03 2023
+
+ServerInit: Program start at Sun Jan 08 19:10:48 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc648)(port656) cli(soc656)(port384)
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, over step
+ServerQuit: Program quit with code 4 at Sun Jan 08 19:11:25 2023
+
+ServerInit: Program start at Sun Jan 08 19:11:48 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 620 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc620)(port656) cli(soc656)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 4)
+SocketReceive: receive success(len = 3)
+SocketSend: send success(len = 3)
+SocketReceive: receive success(len = 2)
+SocketSend: send success(len = 2)
+SocketReceive: receive success(len = 1)
+SocketSend: send success(len = 1)
+SocketReceive: receive success(len = 7)
+SocketSend: send success(len = 7)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 4)
+ServerQuit: Program quit with code 0 at Sun Jan 08 19:15:03 2023
+
+ServerInit: Program start at Sun Jan 08 22:05:10 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 596 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc596)(port648) cli(soc648)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, over step
+ServerQuit: Program quit with code 4 at Sun Jan 08 22:07:12 2023
+
+ServerInit: Program start at Sun Jan 08 22:10:29 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 176 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc176)(port652) cli(soc652)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, over step
+ServerQuit: Program quit with code 4 at Sun Jan 08 22:10:54 2023
+
+ServerInit: Program start at Sun Jan 08 22:52:08 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc648)(port640) cli(soc640)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+SocketReceive: receive success(len = 0)
+SocketSend: send success(len = 1)
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, over step
+ServerQuit: Program quit with code 4 at Sun Jan 08 22:54:38 2023
+
+ServerInit: Program start at Sun Jan 08 23:07:48 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 640 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc640)(port644) cli(soc644)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, return -1, code 10054
+SocketReceive: receive failed, over step
+ServerQuit: Program quit with code 4 at Sun Jan 08 23:08:55 2023
+
+ServerInit: Program start at Sun Jan 08 23:09:01 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc648)(port640) cli(soc640)(port384)
+ServerInit: Program start at Mon Jan 09 12:20:25 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 680 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc680)(port684) cli(soc684)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+SocketReceive: receive success(len = 49)
+SocketSend: send success(len = 51)
+SocketReceive: receive success(len = 145)
+SocketSend: send success(len = 148)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+SocketReceive: receive success(len = 11)
+SocketSend: send success(len = 13)
+SocketReceive: receive success(len = 1)
+SocketSend: send success(len = 2)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+SocketReceive: receive success(len = 6)
+SocketSend: send success(len = 7)
+ServerInit: Program start at Mon Jan 09 12:23:02 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc648)(port640) cli(soc640)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+ServerQuit: Program quit with code 0 at Mon Jan 09 12:23:16 2023
+
+ServerInit: Program start at Mon Jan 09 13:59:42 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 652 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Mon Jan 09 14:02:34 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 640 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Mon Jan 09 14:06:08 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 608 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc608)(port668) cli(soc668)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+ServerQuit: Program quit with code 0 at Mon Jan 09 14:06:23 2023
+
+ServerInit: Program start at Mon Jan 09 18:49:12 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 660 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Mon Jan 09 18:49:26 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 656 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Mon Jan 09 19:02:27 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 640 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc640)(port632) cli(soc632)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+SocketReceive: receive success(len = 11)
+SocketSend: send success(len = 13)
+SocketReceive: receive success(len = 133)
+SocketSend: send success(len = 136)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+ServerQuit: Program quit with code 0 at Mon Jan 09 19:09:29 2023
+
+ServerInit: Program start at Mon Jan 09 19:10:23 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 660 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc660)(port632) cli(soc632)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+ServerQuit: Program quit with code 0 at Mon Jan 09 19:10:33 2023
+
+ServerInit: Program start at Mon Jan 09 19:16:08 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 640 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc640)(port648) cli(soc648)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+ServerQuit: Program quit with code 0 at Mon Jan 09 19:16:38 2023
+
+ServerInit: Program start at Mon Jan 09 19:17:23 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 640 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc640)(port644) cli(soc644)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+ServerQuit: Program quit with code 0 at Mon Jan 09 19:17:37 2023
+
+ServerInit: Program start at Mon Jan 09 19:18:04 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 640 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc640)(port648) cli(soc648)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+ServerQuit: Program quit with code 0 at Mon Jan 09 19:18:15 2023
+
+ServerInit: Program start at Mon Jan 09 20:35:54 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 640 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+ServerInit: Program start at Mon Jan 09 20:37:29 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 648 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc648)(port652) cli(soc652)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+ServerQuit: Program quit with code 0 at Mon Jan 09 20:37:44 2023
+
+ServerInit: Program start at Mon Jan 09 21:27:19 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 652 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc652)(port656) cli(soc656)(port384)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+ServerQuit: Program quit with code 0 at Mon Jan 09 21:27:22 2023
+
+ServerInit: Program start at Tue Jan 10 12:51:54 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 652 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc652)(port656) cli(soc656)(port233)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+ServerQuit: Program quit with code 0 at Tue Jan 10 12:52:04 2023
+
+ServerInit: Program start at Tue Jan 10 12:55:48 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 656 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc656)(port588) cli(soc588)(port233)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+ServerQuit: Program quit with code 0 at Tue Jan 10 12:58:54 2023
+
+ServerInit: Program start at Tue Jan 10 13:22:36 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 620 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc620)(port648) cli(soc648)(port233)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+ServerQuit: Program quit with code 0 at Tue Jan 10 13:22:40 2023
+
+ServerInit: Program start at Tue Jan 10 14:09:11 2023
+record = 1
+ServerIP_LAN: ServerName: LAPTOP-A9AUAL9H ServerIP: 192.168.1.6
+SocketCreate: socket 652 bind success(port 1024), current socket num = 1
+SocketListen: listen success
+SocketAccept: accept success ser(soc652)(port596) cli(soc596)(port233)
+SocketReceive: receive success(len = 4)
+SocketSend: send success(len = 5)
+ServerQuit: Program quit with code 0 at Tue Jan 10 14:09:16 2023
+
