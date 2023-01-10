@@ -147,10 +147,6 @@ void ClientLoadResource(void){
   bgm = Mix_LoadMUS(MAIN_BGM_PATH);
   Mix_VolumeMusic(45);
   Mix_PlayMusic(bgm, -1);
-  SDL_Delay(5000);
-  bgm = Mix_LoadMUS(ONE_PLAYER_BGM_PATH);
-  Mix_VolumeMusic(45);
-  Mix_PlayMusic(bgm, -1);
 }
 
 void ClientEventLoop(void){
@@ -218,6 +214,8 @@ void ClientGameInit(bool flag){
 }
 
 void ClientQuit(int code){
+  SDL_DestroyTexture(MainTexture);
+  SDL_FreeSurface(MainSurface);
   Mix_HaltMusic();
   Mix_FreeMusic(bgm);
   Mix_Quit();
@@ -245,6 +243,7 @@ void ClientConnect(SOCKET *server, struct sockaddr_in *server_addr){
     if (step >= CONNECT_STEP){
       errorf("ClientConnect: connect Server failed, over step\n");
       ClientDrawText("Server Connect Failed", USER_TIP_X, USER_TIP_Y, true);
+      SDL_Delay(CONNECT_DELAY);
       ClientQuit(CONNECT_FAILURE);
     }
     cv = connect(ServerSocket, (SOCKADDR*)server_addr, sizeof(SOCKADDR));
@@ -277,7 +276,7 @@ void* ClientTransmissionThread(void* arg){
     SocketReceive(ServerSocket, Receive);
     //输出接收到的数据
     printf("Message form server: %s\n", Receive);
-    if (!strcmp("4quit", Send)) break;
+    if (!strcmp("4quit", Send)) ClientQuit(EXIT_SUCCESS);
     memset(Send, 0, BUF_SIZE);
     memset(Receive, 0, BUF_SIZE);
   }
@@ -296,10 +295,9 @@ void ClientUIRender(void){
 
 void SocketReceive(SOCKET soc, char* buf){
   char temp[BUF_SIZE] = {0};
-  int r, len, len_temp, rf = 0;
+  int r, len, len_temp, rf = 0, step = 0;
   while (true){
     r = recv(soc, temp, BUF_SIZE, 0);
-    static int step = 0;
     step++;
     if (step > RECEIVE_STEP){
       errorf("SocketReceive: receive failed, over step\n");
@@ -342,7 +340,7 @@ void SocketReceive(SOCKET soc, char* buf){
 
 void SocketSend(SOCKET soc, char* buf){
   //在buf前加上自身长度
-  int len = (int)strlen(buf), len_temp = len, i = 1, num[MES_MAX_LEN] = {0};
+  int len = (int)strlen(buf), len_temp = len, i = 1, step = 0, num[MES_MAX_LEN] = {0};
   for (; i <= MES_MAX_LEN; i++){
     num[i - 1] = len_temp / 10;
     len_temp /= 10;
@@ -367,7 +365,6 @@ void SocketSend(SOCKET soc, char* buf){
   }
   //如果没有发送完就发送剩下的
   while (d > 0){
-    static int step = 0;
     if (step > SEND_STEP){
       errorf("SocketSend: send failed, over step\n");
       ClientQuit(SEND_FAILURE);

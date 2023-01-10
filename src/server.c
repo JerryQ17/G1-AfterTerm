@@ -104,8 +104,7 @@ void SocketCreate(SOCKET *soc, struct sockaddr_in *addr){
     if (bv != SOCKET_ERROR) break;
   }
   if (i == 65536) {
-    int le = WSAGetLastError();
-    errorf("SocketCreate: bind failed, return %d, code %d\n", SOCKET_ERROR, le);
+    errorf("SocketCreate: bind failed, return %d, code %d\n", SOCKET_ERROR, WSAGetLastError());
     ServerQuit(BIND_FAILURE);
   }
   SocketNumber++;
@@ -142,10 +141,9 @@ void SocketAccept(const SOCKET* ser, SOCKET* cli, struct sockaddr_in* cli_addr){
 
 void SocketReceive(SOCKET soc, char* buf){
   char temp[BUF_SIZE] = {0};
-  int r, len, len_temp, rf = 0;
+  int r, len, len_temp, rf = 0, step = 0;
   while (true){
     r = recv(soc, temp, BUF_SIZE, 0);
-    static int step = 0;
     step++;
     if (step > RECEIVE_STEP){
       errorf("SocketReceive: receive failed, over step\n");
@@ -188,7 +186,7 @@ void SocketReceive(SOCKET soc, char* buf){
 
 void SocketSend(SOCKET soc, char* buf){
   //在buf前加上自身长度
-  int len = (int)strlen(buf), len_temp = len, i = 1, num[MES_MAX_LEN] = {0};
+  int len = (int)strlen(buf), len_temp = len, i = 1, step = 0, num[MES_MAX_LEN] = {0};
   for (; i <= MES_MAX_LEN; i++){
     num[i - 1] = len_temp / 10;
     len_temp /= 10;
@@ -213,7 +211,6 @@ void SocketSend(SOCKET soc, char* buf){
   }
   //如果没有发送完就发送剩下的
   while (d > 0){
-    static int step = 0;
     if (step > SEND_STEP){
       errorf("SocketSend: send failed, over step\n");
       ServerQuit(SEND_FAILURE);
