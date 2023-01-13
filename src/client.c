@@ -2,28 +2,32 @@
 
 int SDL_main(int argc, char* argv[]){
   //客户端初始化
-  ClientConfigInit();
-  if (argc == 3) ClientInitAddr(argv[1], (unsigned short)strtol(argv[2], NULL, 10), LAN);
-  else ClientInitAddr(NULL, 0, LAN);
+  ClientCfgInit();
+  if (argc == 3) ClientInitAddr(argv[1], (u_short)strtol(argv[2], NULL, 10), LAN);
+  else {
+    errorf("Invalid argv\n");
+    ClientInitAddr(NULL, 0, LAN);
+  }
   ClientLibInit();
   ClientLoadResource();
+  ClientBGM();
   ClientEventLoop();
   ClientQuit(EXIT_SUCCESS);
 }
 
-void ClientConfigInit(void){
+void ClientCfgInit(void){
   //读取设置文件
   cfg = fopen(CFG_PATH, "r");
   if (cfg != NULL) {
     //读取设置失败 不影响游戏运行 只需要报告错误
     if (fscanf(cfg, "record=%d\nServerIP=%s\nServerPort=%hd", &record, ServerIP, &ServerPort) < CFG_ITEM){
-      fprintf(stderr, "ClientConfigInit: Error occurred when loading configs, ");
+      fprintf(stderr, "ClientCfgInit: Error occurred when loading configs, ");
       if (feof(cfg)) fprintf(stderr, "EOF\n");
       else if (ferror(cfg))  fprintf(stderr, "Read Error\n");
       else fprintf(stderr, "Match Error\n");
     }
     fclose(cfg);
-  }else errorf("ClientConfigInit: Fail to find cfg.txt\n");
+  }else errorf("ClientCfgInit: Fail to find cfg.txt\n");
   if (record){    //根据设置文件 以及日志文件是否能正常写入 来决定是否记录信息
     log_file = fopen(LOG_PATH, "a+");
     if (log_file == NULL) {   //日志文件不能正常写入 不记录信息
@@ -31,7 +35,7 @@ void ClientConfigInit(void){
       errorf("Failed to open cfg/slog.txt\n");
     }else{
       time_t cur_time = time(NULL);
-      recordf("ClientConfigInit: Program start at %srecord = %d\n", ctime(&cur_time), record);
+      recordf("ClientCfgInit: Program start at %srecord = %d\n", ctime(&cur_time), record);
     }
   }
   memset(&GameCondition, 0, sizeof(GameCondition));
@@ -84,7 +88,7 @@ void ClientLibInit(void){
   }
 }
 
-void ClientInitAddr(char *IP, unsigned short port, bool flag){      //获取服务器的IP地址以及端口,flag控制局域网还是广域网
+void ClientInitAddr(char *IP, u_short port, bool flag){      //获取服务器的IP地址以及端口,flag控制局域网还是广域网
   char tmpIP[8] = {0};
   strncat(tmpIP, ServerIP, 7);
   if ((!flag || !strcmp(tmpIP, "192.168")) && ServerPort > 1023) {  //cfg文件
@@ -112,8 +116,10 @@ void ClientInitAddr(char *IP, unsigned short port, bool flag){      //获取服�
     }
     printf("Input Server IP:\n");
     scanf("%s", ServerIP);
+    char PortInput[10] = {0};
     printf("Input Server Port:\n");
-    scanf("%hd", &ServerPort);
+    scanf("%s", PortInput);
+    ServerPort = (u_short)strtol(PortInput, NULL, 10);
     strncpy(tmpIP, ServerIP, 7);
     if ((!flag || !strcmp(tmpIP, "192.168")) && ServerPort > 1023){
       recordf("Valid Network Config, IP = %s, Port = %hd\n", IP, port);
@@ -127,36 +133,22 @@ void ClientInitAddr(char *IP, unsigned short port, bool flag){      //获取服�
 void ClientLoadResource(void){
   //mainUI
   MainSurface = IMG_Load(MAIN_UI_PATH);
-  MainTexture = SDL_CreateTextureFromSurface(Renderer, MainSurface);
   MainRect = (SDL_Rect){0, 0, WIN_WIDTH, WIN_HEIGHT};
-  /*//gameUI
+  //gameUI
   GameSurface = IMG_Load("img/gameUI.png");
-  GameTexture = SDL_CreateTextureFromSurface(Renderer, GameSurface);
   GameRect = (SDL_Rect){0, 0, WIN_WIDTH, WIN_HEIGHT};
-  //chess
-  RedSurface = IMG_Load("img/RedChess.png");
-  RedTexture = SDL_CreateTextureFromSurface(Renderer, RedSurface);
-  GreenSurface = IMG_Load("img/GreenChess.png");
-  GreenTexture = SDL_CreateTextureFromSurface(Renderer, GreenSurface);
-  YellowSurface = IMG_Load("img/YellowChess.png");
-  YellowTexture = SDL_CreateTextureFromSurface(Renderer, YellowSurface);
-  BlueSurface = IMG_Load("img/BlueChess.png");
-  BlueTexture = SDL_CreateTextureFromSurface(Renderer, BlueSurface);
-  recordf("LoadPicture: Complete!\n");*/
-  //bgm
-  bgm = Mix_LoadMUS(MAIN_BGM_PATH);
-  Mix_VolumeMusic(45);
-  Mix_PlayMusic(bgm, -1);
+  recordf("LoadPicture: Complete!\n");
 }
 
 void ClientEventLoop(void){
   SDL_Event event;
   while (SDL_WaitEvent(&event)) {
     //渲染mainUI
-    ClientUIRender();
+    ClientRender();
     switch (event.type) {
       case SDL_QUIT:  //关闭窗口
         recordf("ClientEventLoop: Quit by SDL_QUIT\n");
+        if (GameCondition.GameState != MAIN) ClientGameQuit();
         ClientQuit(EXIT_SUCCESS);
         break;
       case SDL_KEYDOWN: //按下键盘
@@ -171,32 +163,37 @@ void ClientEventLoop(void){
       case SDL_MOUSEBUTTONDOWN:
         recordf("ClientEventLoop: Mouse button down (%d, %d)\n", event.button.x, event.button.y);
 #ifdef DEBUG
-        printf("ClientEventLoop: Mouse button up (%d, %d)\n", event.button.x, event.button.y);
+        printf("ClientEventLoop: Mouse button down (%d, %d)\n", event.button.x, event.button.y);
 #endif
         break;
       case SDL_MOUSEBUTTONUP:
         recordf("ClientEventLoop: Mouse button up (%d, %d)\n", event.button.x, event.button.y);
         if (GameCondition.GameState == MAIN) {    //主界面
           if (event.button.x > SINGLE_MIN_X && event.button.x < SINGLE_MAX_X
-              && event.button.y > SINGLE_MIN_Y && event.button.y < SINGLE_MAX_Y) {  //开始
+              && event.button.y > SINGLE_MIN_Y && event.button.y < SINGLE_MAX_Y) {  //单人
             recordf("ClientEventLoop: Game start, one player\n");
-            ClientGameInit(SINGLE);
-          } else if (event.button.x > DOUBLE_MIN_X && event.button.x < DOUBLE_MAX_X
+            GameCondition.GameState = ONE_PLAYER;
+            ClientGameInit();
+          } else if (event.button.x > DOUBLE_MIN_X && event.button.x < DOUBLE_MAX_X //多人
               && event.button.y > DOUBLE_MIN_Y && event.button.y < DOUBLE_MAX_Y) {
             recordf("ClientEventLoop: Game start, two player\n");
-            ClientGameInit(DOUBLE);
+            GameCondition.GameState = TWO_PLAYER;
+            ClientGameInit();
           } else if (event.button.x > README_MIN_X && event.button.x < README_MAX_X
               && event.button.y > README_MIN_Y && event.button.y < README_MAX_Y) { //帮助
             recordf("ClientEventLoop: Press README button\n");
             int sv = system("start README.md");
             if (sv) {
-              ClientUIRender();
+              ClientRender();
               ClientDrawText("Failed to get help:(", 400, 569, true);
               errorf("ClientEventLoop: Failed to open readme, return %d\n", sv);
             }
           }
         }else {     //游戏界面
-          //TODO
+          if (event.button.x > 0 && event.button.x < RETURN_MAX_X && event.button.y > 0 && event.button.y < RETURN_MAX_Y) {  //返回主界面
+            recordf("ClientEventLoop: Return mainUI\n");
+            ClientGameQuit();
+          }
         }
         break;
       default:break;
@@ -204,57 +201,101 @@ void ClientEventLoop(void){
   }
 }
 
-void ClientGameInit(bool flag){
-  if (flag == SINGLE){
-    GameCondition.GameState = ONE_PLAYER;
+void ClientGameInit(void){
+  GameCondition.GameDifficulty = EASY;
+  LocalBoard = calloc(1, sizeof(Board));
+  NetBoard = calloc(1, sizeof(Board));
+  NetBoard->life = false;
+  if (GameCondition.GameState == ONE_PLAYER){
+    BoardCreate(LocalBoard, RED);
+    ClientRender();
   }else{
-    GameCondition.GameState = TWO_PLAYER;
-    pthread_create(&TransmissionThread, NULL, ClientTransmissionThread, NULL);
+    //创建传输线程，互斥锁和条件变量
+    pthread_mutex_init(&GameInitMutex, NULL);
+    pthread_cond_init(&GameInitCond, NULL);
+    pthread_create(&TransmissionThread, NULL, ClientTransmissionThread, &ThreadArg);
+    //等待服务器告知自己的编号，并创建本地挡板
+    pthread_mutex_lock(&GameInitMutex);
+    pthread_cond_wait(&GameInitCond, &GameInitMutex);
+    BoardCreate(LocalBoard, GameCondition.LocalNum);
+    pthread_mutex_unlock(&GameInitMutex);
+    ClientRender();
+    pthread_mutex_destroy(&GameInitMutex);
+    pthread_cond_destroy(&GameInitCond);
+    //等待另一个客户端上线
+    if (!GameCondition.LocalNum) {
+      pthread_mutex_init(&GameWaitMutex, NULL);
+      pthread_cond_init(&GameWaitCond, NULL);
+      pthread_mutex_lock(&GameWaitMutex);
+      pthread_cond_wait(&GameWaitCond, &GameWaitMutex);
+      pthread_mutex_unlock(&GameWaitMutex);
+      pthread_mutex_destroy(&GameWaitMutex);
+      pthread_cond_destroy(&GameWaitCond);
+    }
+    BoardCreate(NetBoard, GameCondition.NetNum);
+    ClientRender();
   }
+  ClientBGM();
+}
+
+void ClientGameQuit(void){
+  if (GameCondition.GameState != ONE_PLAYER) {
+    SocketSend(ServerSocket, "quit");
+    pthread_cancel(TransmissionThread);
+    BoardDestroy(NetBoard);
+  }
+  BoardDestroy(LocalBoard);
+  GameCondition.GameState = MAIN;
+  ClientRender();
+  ClientBGM();
 }
 
 void ClientQuit(int code){
+  Mix_HaltMusic();
+  //free
+
+  //纹理和表面
   SDL_DestroyTexture(MainTexture);
   SDL_FreeSurface(MainSurface);
-  Mix_HaltMusic();
-  Mix_FreeMusic(bgm);
-  Mix_Quit();
+  SDL_DestroyTexture(GameTexture);
+  SDL_FreeSurface(GameSurface);
+  //TTF
   TTF_CloseFont(Font);
   TTF_CloseFont(NumberFont);
   TTF_Quit();
+  //Mix
+  Mix_FreeMusic(bgm);
+  Mix_Quit();
+  //SDL
   SDL_DestroyRenderer(Renderer);
   SDL_DestroyWindow(Window);
   SDL_Quit();
+  //WSA
   WSACleanup();
   time_t cur_time = time(NULL);
   recordf("ClientQuit: Program quit with code %d at %s\n", code, ctime(&cur_time));
   exit(code);
 }
 
-void ClientConnect(SOCKET *server, struct sockaddr_in *server_addr){
+void ClientConnect(SOCKET *server, SOCKADDR_IN* server_addr){
   *server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-  memset(server_addr, 0, sizeof(struct sockaddr_in));  //每个字节都用0填充
+  memset(server_addr, 0, sizeof(SOCKADDR_IN));  //每个字节都用0填充
   server_addr->sin_family = AF_INET;
   server_addr->sin_addr.s_addr = inet_addr(ServerIP);
   server_addr->sin_port = htons(ServerPort);  //端口
   int cv, step = 0;
   while (true){
     step++;
-    if (step >= CONNECT_STEP){
+    if (step >= CONNECT_STEP) {
       errorf("ClientConnect: connect Server failed, over step\n");
       ClientDrawText("Server Connect Failed", USER_TIP_X, USER_TIP_Y, true);
       SDL_Delay(CONNECT_DELAY);
       ClientQuit(CONNECT_FAILURE);
     }
     cv = connect(ServerSocket, (SOCKADDR*)server_addr, sizeof(SOCKADDR));
-    if (cv == SOCKET_ERROR){
+    if (cv == SOCKET_ERROR) {
       errorf("ClientConnect: connect failed, return %d, code %d\n", cv, WSAGetLastError());
-      continue;
-    }else {
-      ClientDrawText("Server Connected", USER_TIP_X, USER_TIP_Y, true);
-      SDL_Delay(CONNECT_DELAY);
-      break;
-    }
+    } else break;
   }
   recordf("ClientConnect: connect success return %d code %d\n", cv, WSAGetLastError());
 #ifdef DEBUG
@@ -262,35 +303,102 @@ void ClientConnect(SOCKET *server, struct sockaddr_in *server_addr){
 #endif
 }
 
-void* ClientTransmissionThread(void* arg){
-  ClientDrawText("Server Connecting...", USER_TIP_X, USER_TIP_Y, true);
-  //向服务器发起请求
-  ClientConnect(&ServerSocket, &ServerAddr);
-  //获取用户输入的字符串并发送给服务器
-  char Send[BUF_SIZE] = {0}, Receive[BUF_SIZE] = {0};
-  while (true) {
-    printf("Input a string:\n");
-    scanf("%s", Send);
-    SocketSend(ServerSocket, Send);
-    //接收服务器传回的数据
-    SocketReceive(ServerSocket, Receive);
-    //输出接收到的数据
-    printf("Message form server: %s\n", Receive);
+void* ClientTransmissionThread(void* ThreadArgv){
+  ClientConnect(&ServerSocket, &ServerAddr);    //连接服务器
+  while (true) {    //传输的循环
+    if (GameCondition.GameState == MAIN){
+      pthread_exit(NULL);
+      break;    //细节break，虽然没用，但是可以少一个Endless Loop的Warning
+    }
+    if (ARG == 0) {   //从服务器获得自己的编号
+      pthread_mutex_lock(&GameInitMutex);
+      SocketSend(ServerSocket, "ConnectRequest");
+      SocketReceive(ServerSocket, Receive);
+      GameCondition.LocalNum = (strrchr(Receive, '0') == NULL);
+      GameCondition.NetNum = !GameCondition.LocalNum;
+      pthread_cond_signal(&GameInitCond);
+      pthread_mutex_unlock(&GameInitMutex);
+      ARG++;
+#ifdef DEBUG
+      printf("LocalNum: %d\n", GameCondition.LocalNum);
+#endif
+    }else if (ARG == 1) {   //等待另一个客户端准备好
+      pthread_mutex_lock(&GameWaitMutex);
+      SocketSend(ServerSocket, "ClientReady");
+      SocketReceive(ServerSocket, Receive);
+      pthread_cond_signal(&GameWaitCond);
+      pthread_mutex_unlock(&GameWaitMutex);
+      ARG++;
+    }else if (ARG == 2) {
+      //TODO
+      //ARG++;
+    }
     if (!strcmp("4quit", Send)) ClientQuit(EXIT_SUCCESS);
     memset(Send, 0, BUF_SIZE);
     memset(Receive, 0, BUF_SIZE);
   }
-  return NULL;
 }
 
-void ClientUIRender(void){
+void ClientRender(void){
   SDL_RenderClear(Renderer);
   if (GameCondition.GameState == MAIN) {
+    MainTexture = SDL_CreateTextureFromSurface(Renderer, MainSurface);
     SDL_RenderCopy(Renderer, MainTexture, NULL, &MainRect);
-  }else {
-    //TODO
+    SDL_RenderPresent(Renderer);
+    SDL_DestroyTexture(MainTexture);
+  } else {
+    GameTexture = SDL_CreateTextureFromSurface(Renderer, GameSurface);
+    SDL_RenderCopy(Renderer, GameTexture, NULL, &GameRect);
+    if (LocalBoard->life) {
+      LocalBoard->tex = SDL_CreateTextureFromSurface(Renderer, LocalBoard->sur);
+      SDL_RenderCopy(Renderer, LocalBoard->tex, &LocalBoard->SourceRect, &LocalBoard->DestRect);
+      SDL_DestroyTexture(LocalBoard->tex);
+    }
+    if (NetBoard->life) {
+      NetBoard->tex = SDL_CreateTextureFromSurface(Renderer, NetBoard->sur);
+      SDL_RenderCopy(Renderer, NetBoard->tex, &NetBoard->SourceRect, &NetBoard->DestRect);
+      SDL_DestroyTexture(NetBoard->tex);
+    }
+    SDL_RenderPresent(Renderer);
+    SDL_DestroyTexture(GameTexture);
   }
-  SDL_RenderPresent(Renderer);
+}
+
+void ClientBGM(void){
+  Mix_HaltMusic();
+  bgm = Mix_LoadMUS(BgmPath[GameCondition.GameState]);
+  Mix_VolumeMusic(BgmVolume[GameCondition.GameState]);
+  Mix_PlayMusic(bgm, -1);
+}
+
+void BoardCreate(Board* board, bool color){   //创建Board对象
+  board->life = true;
+  board->SourceRect.h = BOARD_INIT_H;
+  board->DestRect.y = BOARD_INIT_Y;
+  board->sur = IMG_Load(color == RED ? RED_BOARD_PATH : BLUE_BOARD_PATH);
+  board->tex = SDL_CreateTextureFromSurface(Renderer, board->sur);
+  board->DestRect.h = BOARD_INIT_H;
+  if (GameCondition.GameDifficulty == EASY) {
+    board->SourceRect.w = EASY_LEN;
+    board->remain = EASY_REMAIN;
+  }else if (GameCondition.GameDifficulty == NORMAL) {
+    board->SourceRect.w = NORMAL_LEN;
+    board->remain = NOR_REMAIN;
+  }else if (GameCondition.GameDifficulty == HARD) {
+    board->SourceRect.w = HARD_LEN;
+    board->remain = HARD_REMAIN;
+  }
+  board->DestRect.w = board->SourceRect.w;
+  if (GameCondition.GameState == ONE_PLAYER){
+    board->DestRect.x = (WIN_WIDTH - board->SourceRect.w) / 2;
+  }else if (GameCondition.GameState == TWO_PLAYER){
+    board->DestRect.x = WIN_WIDTH * (color == RED ? 3 : 1) / 4 - board->SourceRect.w / 2;
+  }
+}
+
+void BoardDestroy(Board* board){   //销毁Board对象
+  memset(board, 0, sizeof(Board));
+  free(board);
 }
 
 void SocketReceive(SOCKET soc, char* buf){
@@ -334,13 +442,15 @@ void SocketReceive(SOCKET soc, char* buf){
   recordf("SocketReceive: receive success(len = %d)\n", len);
 #ifdef DEBUG
   printf("SocketReceive: receive success(len = %d)\n", len);
-  printf("Message: %s\n", buf);
+  printf("ReceiveMessage: %s\n", buf);
 #endif
 }
 
-void SocketSend(SOCKET soc, char* buf){
+void SocketSend(SOCKET soc, const char* buf){
   //在buf前加上自身长度
-  int len = (int)strlen(buf), len_temp = len, i = 1, step = 0, num[MES_MAX_LEN] = {0};
+  char SendBuf[BUF_SIZE] = {0};
+  strcpy(SendBuf, buf);
+  int len = (int)strlen(SendBuf), len_temp = len, i = 1, step = 0, num[MES_MAX_LEN] = {0};
   for (; i <= MES_MAX_LEN; i++){
     num[i - 1] = len_temp / 10;
     len_temp /= 10;
@@ -352,26 +462,27 @@ void SocketSend(SOCKET soc, char* buf){
     num[j] = len_temp / k;
     len_temp %= k;
   }
-  memmove(buf + i, buf, len);
+  memmove(SendBuf + i, SendBuf, len + 1);
   for (int j = 0; j < i; j++) {
-    *(buf + j) = (char) (num[j] + 48);
+    *(SendBuf + j) = (char) (num[j] + 48);
   }
   //发送buf给soc
-  len = (int)strlen(buf);
-  int s = send(soc, buf, len + 1, 0), d = len - s;
+  len = (int)strlen(SendBuf);
+  int s = send(soc, SendBuf, len + 1, 0), d = len - s;
   if (s == SOCKET_ERROR){
     errorf("SocketSend: send failed, return %d, code %d\n", s, WSAGetLastError());
     d = len;
   }
   //如果没有发送完就发送剩下的
   while (d > 0){
+    step++;
     if (step > SEND_STEP){
       errorf("SocketSend: send failed, over step\n");
       ClientQuit(SEND_FAILURE);
     }
     char temp[BUF_SIZE] = {0};
     for (int j = 0; j < d; j++){
-      temp[j] = buf[len - d + j];
+      temp[j] = SendBuf[len - d + j];
     }
     s = send(soc, temp, (int)strlen(temp) + 1, 0);
     if (s == SOCKET_ERROR){
@@ -379,11 +490,10 @@ void SocketSend(SOCKET soc, char* buf){
       continue;
     }
     d -= s;
-    step++;
   }
   recordf("SocketSend: send success(len = %d)\n", len);
 #ifdef DEBUG
-  printf("SocketSend: send success(len = %d)\nMessage: %s", len, buf);
+  printf("SocketSend: send success(len = %d)\nSendMessage: %s\n", len, SendBuf);
 #endif
 }
 

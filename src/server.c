@@ -2,21 +2,20 @@
 
 int main(){
   ServerInit();
-  SOCKET serv, client;
-  struct sockaddr_in serv_addr, client_addr;
-  SocketCreate(&serv, &serv_addr);
-  SocketListen(serv, 20);
-  SocketAccept(&serv, &client, &client_addr);
-  char buf[BUF_SIZE] = {0};
-  while(1) {
-    SocketReceive(client, buf);
-    SocketSend(client, buf);
-    if (!strcmp("4quit",buf))break;
-    memset(buf, 0, BUF_SIZE);
+  SocketCreate(&ServerSocket, &ServerAddr);
+  SocketListen(ServerSocket, 20);
+  //创建传输线程，互斥锁和条件变量
+  GameInitMutex = calloc(1, sizeof(pthread_mutex_t));
+  GameInitCond = calloc(1, sizeof(pthread_cond_t));
+  pthread_mutex_init(GameInitMutex, NULL);
+  pthread_cond_init(GameInitCond, NULL);
+  for (int i = 0; i < 2; i++) {
+    SocketAccept(&ServerSocket, &ClientSocket[i], &ClientAddr[i]);
+    ClientNumber++;
+    pthread_create(&ClientThread[i], NULL, ServerTransmissionThread, &ThreadArg[i]);
+    pthread_detach(ClientThread[i]);
   }
-  closesocket(serv);
-  closesocket(client);
-  ServerQuit(EXIT_SUCCESS);
+  pthread_exit(NULL);
 }
 
 void ServerInit(void){
@@ -62,9 +61,9 @@ void ServerIP_LAN(char *ip){    //获取本机局域网IP地址
   struct in_addr addr, temp;
   for (int i = 0; host->h_addr_list[i] != NULL; i++){   //筛选局域网IP
     temp.s_addr = *(u_long*)host->h_addr_list[i];
-    char tmp[8] = {0};
-    strncat(tmp, inet_ntoa(temp), 7);
-    if (!strcmp(tmp, "192.168")){
+    char tmp[17] = {0};
+    strncat(tmp, inet_ntoa(temp), 10);
+    if (!strcmp(tmp, "192.168.1.")){
       addr.s_addr = *(u_long*)host->h_addr_list[i];
       break;
     }
@@ -88,6 +87,36 @@ void ServerQuit(const int code){
   exit(code);
 }
 
+void* ServerTransmissionThread(void* ThreadArgv){
+  char SendBuf[BUF_SIZE] = {0}, RecBuf[BUF_SIZE] = {0};
+  while (true) {
+    SocketReceive(ClientSocket[ARG], RecBuf);
+    if (!strcmp(RecBuf, "ConnectRequest")) {
+      strcpy(SendBuf, "Client");
+      SendBuf[6] = ARG + 48;
+      SendBuf[7] = 0;
+      SocketSend(ClientSocket[ARG], SendBuf);
+    }else if (!strcmp(RecBuf, "ClientReady")){
+      pthread_mutex_lock(GameInitMutex);
+      if (ARG) pthread_cond_signal(GameInitCond);
+      else pthread_cond_wait(GameInitCond, GameInitMutex);
+      SocketSend(ClientSocket[ARG], "GameReady");
+      pthread_mutex_unlock(GameInitMutex);
+    }else if (!strcmp(RecBuf, "quit")) {
+      closesocket(ClientSocket[ARG]);
+      if (ClientNumber) {
+        ClientNumber = 0;
+        pthread_exit(NULL);
+      } else {
+        ServerQuit(EXIT_SUCCESS);
+      }
+      break;
+    }
+    memset(SendBuf, 0, BUF_SIZE);
+    memset(RecBuf, 0, BUF_SIZE);
+  }
+}
+
 void SocketCreate(SOCKET *soc, struct sockaddr_in *addr){
   *soc = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (*soc == INVALID_SOCKET) {
@@ -100,17 +129,16 @@ void SocketCreate(SOCKET *soc, struct sockaddr_in *addr){
   int i = 1024;
   for (; i < 65536; i++) {
     addr->sin_port = htons(i);  //端口
-    int bv = bind(*soc, (struct sockaddr *)addr, sizeof(struct sockaddr));
+    int bv = bind(*soc, (struct sockaddr*)addr, sizeof(struct sockaddr));
     if (bv != SOCKET_ERROR) break;
   }
   if (i == 65536) {
     errorf("SocketCreate: bind failed, return %d, code %d\n", SOCKET_ERROR, WSAGetLastError());
     ServerQuit(BIND_FAILURE);
   }
-  SocketNumber++;
-  recordf("SocketCreate: socket %llu bind success(port %d), current socket num = %d\n", *soc, i, SocketNumber);
+  recordf("SocketCreate: socket %llu bind success(port %d)\n", *soc, i);
 #ifdef DEBUG
-  printf("SocketCreate: socket %llu bind success(port %d), current socket num = %d\n", *soc, i, SocketNumber);
+  printf("SocketCreate: socket %llu bind success(port %d)\n", *soc, i);
 #endif
 }
 
@@ -180,13 +208,14 @@ void SocketReceive(SOCKET soc, char* buf){
   recordf("SocketReceive: receive success(len = %d)\n", len);
 #ifdef DEBUG
   printf("SocketReceive: receive success(len = %d)\n", len);
-  printf("Message: %s\n", buf);
+  printf("ReceiveMessage: %s\n", buf);
 #endif
 }
 
-void SocketSend(SOCKET soc, char* buf){
-  //在buf前加上自身长度
-  int len = (int)strlen(buf), len_temp = len, i = 1, step = 0, num[MES_MAX_LEN] = {0};
+void SocketSend(SOCKET soc, const char* buf){
+  char SendBuf[BUF_SIZE] = {0};
+  strcpy(SendBuf, buf);
+  int len = (int)strlen(SendBuf), len_temp = len, i = 1, step = 0, num[MES_MAX_LEN] = {0};
   for (; i <= MES_MAX_LEN; i++){
     num[i - 1] = len_temp / 10;
     len_temp /= 10;
@@ -198,13 +227,13 @@ void SocketSend(SOCKET soc, char* buf){
     num[j] = len_temp / k;
     len_temp %= k;
   }
-  memmove(buf + i, buf, len);
+  memmove(SendBuf + i, SendBuf, len);
   for (int j = 0; j < i; j++) {
-    *(buf + j) = (char) (num[j] + 48);
+    *(SendBuf + j) = (char) (num[j] + 48);
   }
   //发送buf给soc
-  len = (int)strlen(buf);
-  int s = send(soc, buf, len + 1, 0), d = len - s;
+  len = (int)strlen(SendBuf);
+  int s = send(soc, SendBuf, len + 1, 0), d = len - s;
   if (s == SOCKET_ERROR){
     errorf("SocketSend: send failed, return %d, code %d\n", s, WSAGetLastError());
     d = len;
@@ -217,7 +246,7 @@ void SocketSend(SOCKET soc, char* buf){
     }
     char temp[BUF_SIZE] = {0};
     for (int j = 0; j < d; j++){
-      temp[j] = buf[len - d + j];
+      temp[j] = SendBuf[len - d + j];
     }
     s = send(soc, temp, (int)strlen(temp) + 1, 0);
     if (s == SOCKET_ERROR){
@@ -229,7 +258,7 @@ void SocketSend(SOCKET soc, char* buf){
   }
   recordf("SocketSend: send success(len = %d)\n", len);
 #ifdef DEBUG
-  printf("SocketSend: send success(len = %d)\nMessage: %s", len, buf);
+  printf("SocketSend: send success(len = %d)\nSendMessage: %s\n", len, SendBuf);
 #endif
 }
 
@@ -277,4 +306,5 @@ void errorf(const char* format, ...){   //在日志和标准误差流中记录�
   va_start(ap, format);
   vfprintf(stderr, format, ap);
   va_end(ap);
+  fflush(stderr);
 }

@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "pthreadVC2.lib")
 
 //宏定义
 
@@ -36,12 +37,20 @@
 #define SEND_STEP 20
 #define RECEIVE_STEP 20
 
+#define ARG (*(int*)ThreadArgv)
 
 //变量定义
 
 static WSADATA data;
 static char ServerIP[17] = {0};
-static int SocketNumber = 0;
+static int ClientNumber = 0;
+static SOCKET ServerSocket, ClientSocket[2];
+static struct sockaddr_in ServerAddr, ClientAddr[2];
+
+static pthread_t ClientThread[2];
+static int ThreadArg[2] = {0, 1};
+static pthread_mutex_t *GameInitMutex;
+static pthread_cond_t *GameInitCond;
 
 static int record = 0;
 static FILE *cfg;
@@ -52,11 +61,12 @@ static FILE *log_file;
 void ServerInit(void);
 void ServerIP_LAN(char *ip);
 void ServerQuit(int code);
+void* ServerTransmissionThread(void* ThreadArgv);
 void SocketCreate(SOCKET* soc, struct sockaddr_in *addr);
 void SocketListen(SOCKET soc, int backlog);
 void SocketAccept(const SOCKET* ser, SOCKET* cli, struct sockaddr_in* cli_addr);
 void SocketReceive(SOCKET soc, char* buf);
-void SocketSend(SOCKET soc, char* buf);
+void SocketSend(SOCKET soc, const char* buf);
 void DataResolve(char* buf, int flag);
 void recordf(const char* format, ...);
 void errorf(const char* format, ...);
