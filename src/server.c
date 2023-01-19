@@ -5,10 +5,8 @@ int main(){
   SocketCreate(&ServerSocket, &ServerAddr);
   SocketListen(ServerSocket, 20);
   //创建传输线程，互斥锁和条件变量
-  GameInitMutex = calloc(1, sizeof(pthread_mutex_t));
-  GameInitCond = calloc(1, sizeof(pthread_cond_t));
-  pthread_mutex_init(GameInitMutex, NULL);
-  pthread_cond_init(GameInitCond, NULL);
+  pthread_mutex_init(&GameInitMutex, NULL);
+  pthread_cond_init(&GameInitCond, NULL);
   for (int i = 0; i < 2; i++) {
     SocketAccept(&ServerSocket, &ClientSocket[i], &ClientAddr[i]);
     ClientNumber++;
@@ -56,7 +54,7 @@ void ServerInit(void){
 void ServerIP_LAN(char *ip){    //获取本机局域网IP地址
   char HostName[BUF_SIZE] = {0};
   gethostname(HostName, BUF_SIZE);
-  struct hostent *host;
+  const struct hostent *host;
   host = gethostbyname(HostName);
   struct in_addr addr, temp;
   for (int i = 0; host->h_addr_list[i] != NULL; i++){   //筛选局域网IP
@@ -79,6 +77,8 @@ void ServerIP_LAN(char *ip){    //获取本机局域网IP地址
 }
 
 void ServerQuit(const int code){
+  pthread_cond_destroy(&GameInitCond);
+  pthread_mutex_destroy(&GameInitMutex);
   WSACleanup();
   if (record){
     time_t cur_time = time(NULL);
@@ -88,32 +88,62 @@ void ServerQuit(const int code){
 }
 
 void* ServerTransmissionThread(void* ThreadArgv){
+  pthread_mutex_init(&TransmissionMutex[ARG], NULL);
+  pthread_cond_init(&TransmissionCond[ARG], NULL);
   char SendBuf[BUF_SIZE] = {0}, RecBuf[BUF_SIZE] = {0};
   while (true) {
     SocketReceive(ClientSocket[ARG], RecBuf);
     if (!strcmp(RecBuf, "ConnectRequest")) {
-      strcpy(SendBuf, "Client");
-      SendBuf[6] = ARG + 48;
-      SendBuf[7] = 0;
+      sprintf(SendBuf, "Client%d", ARG);
       SocketSend(ClientSocket[ARG], SendBuf);
     }else if (!strcmp(RecBuf, "ClientReady")){
-      pthread_mutex_lock(GameInitMutex);
-      if (ARG) pthread_cond_signal(GameInitCond);
-      else pthread_cond_wait(GameInitCond, GameInitMutex);
+      pthread_mutex_lock(&GameInitMutex);
+      if (ARG) pthread_cond_signal(&GameInitCond);
+      else pthread_cond_wait(&GameInitCond, &GameInitMutex);
       SocketSend(ClientSocket[ARG], "GameReady");
-      pthread_mutex_unlock(GameInitMutex);
+      pthread_mutex_unlock(&GameInitMutex);
     }else if (!strcmp(RecBuf, "quit")) {
-      closesocket(ClientSocket[ARG]);
-      if (ClientNumber) {
-        ClientNumber = 0;
-        pthread_exit(NULL);
-      } else {
-        ServerQuit(EXIT_SUCCESS);
-      }
+      ServerDataResolve(RecBuf, ARG, NET_TO_HOST);
       break;
+    }else{
+      //pthread_mutex_lock(&TransmissionMutex[ARG]);
+      sscanf(RecBuf, "Client%*d,LocalBall(%d,%d),LocalBoard(%d,%d)",
+              &BallX[ARG], &BallY[ARG], &BoardX[ARG], &BoardY[ARG]);
+      ServerDataResolve(RecBuf, ARG, NET_TO_HOST);
+      /*pthread_cond_signal(&TransmissionCond[ARG]);
+      pthread_mutex_unlock(&TransmissionMutex[ARG]);
+      pthread_mutex_lock(&TransmissionMutex[!ARG]);*/
+
     }
     memset(SendBuf, 0, BUF_SIZE);
     memset(RecBuf, 0, BUF_SIZE);
+  }
+}
+
+char* ServerDataResolve(char* buf, int ThreadNum, bool flag){    //服务端数据解析
+  static char rev[BUF_SIZE] = {0};
+  memset(rev, 0, BUF_SIZE);
+  if (flag == NET_TO_HOST) {
+    if (!strcmp(buf, "quit")) {
+      closesocket(ClientSocket[ThreadNum]);
+      if (ClientNumber) {
+        ClientNumber = 0;
+        pthread_exit(NULL);
+      }else ServerQuit(EXIT_SUCCESS);
+    }else{
+      pthread_mutex_lock(&TransmissionMutex[ThreadNum]);
+      sscanf(buf, "Client%*d,LocalBall(%d,%d),LocalBoard(%d,%d)",
+                      &BallX[ThreadNum], &BallY[ThreadNum], &BoardX[ThreadNum], &BoardY[ThreadNum]);
+      pthread_mutex_unlock(&TransmissionMutex[ThreadNum]);
+      pthread_mutex_lock(&TransmissionMutex[!ThreadNum]);
+      sprintf(rev, "Client%d,NetBall(%d,%d),NetBoard(%d,%d)",
+              !ThreadNum, BallX[!ThreadNum], BallY[!ThreadNum], BoardX[!ThreadNum], BoardY[!ThreadNum]);
+      SocketSend(ClientSocket[ThreadNum], rev);
+      pthread_mutex_unlock(&TransmissionMutex[!ThreadNum]);
+      return rev;
+    }
+  }else if (flag == HOST_TO_NET){
+    //TODO
   }
 }
 
@@ -128,7 +158,7 @@ void SocketCreate(SOCKET *soc, struct sockaddr_in *addr){
   addr->sin_addr.s_addr = inet_addr(ServerIP);
   int i = 1024;
   for (; i < 65536; i++) {
-    addr->sin_port = htons(i);  //端口
+    addr->sin_port = htons((u_short)i);  //端口
     int bv = bind(*soc, (struct sockaddr*)addr, sizeof(struct sockaddr));
     if (bv != SOCKET_ERROR) break;
   }
@@ -169,7 +199,7 @@ void SocketAccept(const SOCKET* ser, SOCKET* cli, struct sockaddr_in* cli_addr){
 
 void SocketReceive(SOCKET soc, char* buf){
   char temp[BUF_SIZE] = {0};
-  int r, len, len_temp, rf = 0, step = 0;
+  int r, len = -1, len_temp, rf = 0, step = 0;
   while (true){
     r = recv(soc, temp, BUF_SIZE, 0);
     step++;
@@ -227,7 +257,7 @@ void SocketSend(SOCKET soc, const char* buf){
     num[j] = len_temp / k;
     len_temp %= k;
   }
-  memmove(SendBuf + i, SendBuf, len);
+  memmove(SendBuf + i, SendBuf, len + 1);
   for (int j = 0; j < i; j++) {
     *(SendBuf + j) = (char) (num[j] + 48);
   }
@@ -260,29 +290,6 @@ void SocketSend(SOCKET soc, const char* buf){
 #ifdef DEBUG
   printf("SocketSend: send success(len = %d)\nSendMessage: %s\n", len, SendBuf);
 #endif
-}
-
-void DataResolve(char* buf, int flag){
-  char copy[BUF_SIZE] = {0}, *arr_ptr = copy;
-  strcpy(copy, buf);
-  if (flag == HOST_TO_NET){
-    int len = (int)strlen(buf), len_temp = len, i = 1;
-    for (; i <= MES_MAX_LEN; i++){
-      len_temp /= 10;
-      if (len_temp == 0) break;
-    }
-    memmove(arr_ptr + i, arr_ptr, strlen(buf));
-    *buf = (char)(strlen(buf) + 47);
-  }
-
-  int item = 0, value;
-  while (true) {
-    if (sscanf(arr_ptr, "%*s%d", &value) == 1){
-      item++;
-      char* ptr = strchr(arr_ptr, value + 48);
-      arr_ptr = ptr + 1;
-    }else break;
-  }
 }
 
 void recordf(const char* format, ...){    //向日志文件中记录信息
