@@ -45,6 +45,8 @@
 #define RETURN_MAX_Y 72
 #define USER_TIP_X   400
 #define USER_TIP_Y   600
+#define SCORE_X      1200
+#define SCORE_Y      10
 #define BOARD_MIN_Y  600
 #define BOARD_INIT_Y 650
 
@@ -70,7 +72,7 @@
 
 #define MES_MAX_LEN   4
 #define BUF_SIZE      1000
-#define ADDR_STEP     5
+#define IP_STEP     5
 #define CONNECT_STEP  20
 #define SEND_STEP     20
 #define RECEIVE_STEP  20
@@ -79,15 +81,20 @@
 #define HOST_TO_NET true
 #define NET_TO_HOST false
 #define LAN true
-#define WAN false
-#define BLUE true
+//#define WAN false
+//#define BLUE true
 #define RED false
 
-#define ARG (*(int*)ThreadArgv)
-#define BallMinX(ball) ((ball)->DestRect.x)
-#define BallMaxX(ball) (BallMinX(ball) + (ball)->DestRect.w)
-#define BallMinY(ball) ((ball)->DestRect.y)
-#define BallMaxY(ball) (BallMinY(ball) + (ball)->DestRect.h)
+#define ARG         (*(int*)ThreadArgv)
+#define state       GameCondition.GameState
+#define difficulty  GameCondition.GameDifficulty
+
+#define ObjectMinX(Object) ((Object)->DestRect.x)
+#define ObjectMaxX(Object) (ObjectMinX(Object) + (Object)->DestRect.w)
+#define ObjectMinY(Object) ((Object)->DestRect.y)
+#define ObjectMaxY(Object) (ObjectMinY(Object) + (Object)->DestRect.h)
+#define ObjectMidX(Object) ((ObjectMinX(Object) + ObjectMaxX(Object)) / 2.0)
+#define ObjectMidY(Object) ((ObjectMinY(Object) + ObjectMaxY(Object)) / 2.0)
 
 //类型定义
 
@@ -109,13 +116,13 @@ typedef struct game_condition{    //游戏信息
   game_state GameState;
   game_difficulty GameDifficulty;
   bool LocalNum;
-  int LocalBallX;
-  int LocalBallY;
+  float LocalBallX;
+  float LocalBallY;
   int LocalBoardX;
   int LocalBoardY;
   bool NetNum;
-  int NetBallX;
-  int NetBallY;
+  float NetBallX;
+  float NetBallY;
   int NetBoardX;
   int NetBoardY;
 }game_condition;
@@ -130,6 +137,8 @@ typedef enum Element{             //元素种类
 
 typedef struct Board{   //挡板
   int life;
+  Element element;
+  uint8_t alpha;
   SDL_Surface* sur;
   SDL_Texture* tex;
   SDL_Rect SourceRect;
@@ -143,6 +152,7 @@ typedef enum BallDir{
 }BallDir;
 
 typedef struct Ball{    //弹球
+  int score;
   bool SetOff;
   BallDir dir;
   double k;
@@ -150,7 +160,7 @@ typedef struct Ball{    //弹球
   Element element;
   SDL_Surface* sur;
   SDL_Texture* tex;
-  SDL_Rect DestRect;
+  SDL_FRect DestRect;
 }Ball;
 
 typedef struct Brick{   //砖块
@@ -172,7 +182,6 @@ static u_short ServerPort = 0;
 static char Send[BUF_SIZE] = {0};
 static char Receive[BUF_SIZE] = {0};
 static game_condition GameCondition;
-static Brick* BrickArr;
 
 static const int BoardLenVec[] = {200, 150, 100};
 static const int BoardLifeVec[] = {10, 8, 5};
@@ -186,8 +195,10 @@ static const char* BallPathVec[] = {"img/FireBall.png",
                                     "img/ThunderBall.png",
                                     "img/EmptyBall.png"};
 
+static Brick* BrickArr = NULL;
+static bool BrickPre = false;
 static const int BrickLifeVec[] = {1, 2, 3};
-static const int BrickNum[] = {10, 15, 20};
+static const int BrickNum[] = {30, 60, 90};
 static const char* BrickPathVec[] = { "img/FireBrick.png",
                                       "img/WaterBrick.png",
                                       "img/IceBrick.png",
@@ -204,7 +215,7 @@ static Ball *LocalBall, *NetBall;
 
 static int record = 0;
 static FILE *cfg;
-static FILE *log_file;
+static FILE *LogFile;
 
 static SDL_Window *Window = NULL;                  //窗口
 static SDL_Renderer *Renderer = NULL;              //渲染器
@@ -235,33 +246,38 @@ static const char* BgmPathVec[] = {"msc/George Duke-It's On.mp3",
 
 void ClientCfgInit(void);
 void ClientLibInit(void);
-void ClientInitAddr(char *IP, u_short port, bool flag);
+void ClientIPInit(char *IP, u_short port, bool flag);
 void ClientLoadResource(void);
 void ClientEventLoop(void);
 void ClientGameInit(void);
+void ClientGameChange(void);
 void ClientGameQuit(void);
 void ClientQuit(int code);
 void ClientConnect(SOCKET *server, SOCKADDR_IN* server_addr);
 void* ClientTransmissionThread(void* ThreadArgv);
 void ClientDataResolve(char* buf, int flag);
 void ClientRender(void);
-void ClientBGM(void);
+void ClientPlayBGM(void);
+void ClientDrawText(const char* text, int x, int y, bool pre);
 
 void BoardCreate(Board* board, bool color);
-static inline void BoardMove(Board* board, Ball* ball, SDL_KeyCode operation);
+void BoardMove(Board* board, Ball* ball, SDL_KeyCode operation);
 void BoardDestroy(Board* board);
 
 void BallCreate(Ball* ball, Board* board);
-static inline void BallMove(Ball* ball);
+void BallMove(Ball* ball);
+void BallHit(Ball* ball, Brick* brick, char* mode);
 void BallDestroy(Ball* ball);
 
 void BrickCreate(Brick* brick, int x, int y, Element color);
+void BrickArrCreate(Brick *arr);
+void BrickArrDestroy(Brick *arr);
+void BrickDestroy(Brick* brick);
 
 void SocketReceive(SOCKET soc, char* buf);
 void SocketSend(SOCKET soc, const char* buf);
 
-void ClientDrawText(const char* text, int x, int y, bool pre);
-void recordf(const char* format, ...)__attribute__((__format__(printf, 1, 2)));
-void errorf(const char* format, ...)__attribute__((__format__(printf, 1, 2)));
+static inline void recordf(const char* format, ...)__attribute__((__format__(printf, 1, 2)));
+static inline void errorf(const char* format, ...)__attribute__((__format__(printf, 1, 2)));
 
 #endif

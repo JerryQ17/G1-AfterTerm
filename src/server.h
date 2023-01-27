@@ -46,7 +46,8 @@ static char ServerIP[17] = {0};
 static int ClientNumber = 0;
 static SOCKET ServerSocket, ClientSocket[2];
 static struct sockaddr_in ServerAddr, ClientAddr[2];
-static int BallX[2] = {0}, BallY[2] = {0}, BoardX[2] = {0}, BoardY[2] = {0};
+static float BallX[2] = {0}, BallY[2] = {0};
+static int BoardX[2] = {0}, BoardY[2] = {0};
 
 static pthread_t ClientThread[2];
 static int ThreadArg[2] = {0, 1};
@@ -55,7 +56,10 @@ static pthread_cond_t GameInitCond, TransmissionCond[2];
 
 static int record = 0;
 static FILE *cfg;
-static FILE *log_file;
+static FILE *LogFile;
+
+static const int BrickNum[] = {30, 60, 90};
+static char BrickOrder[BUF_SIZE] = {0};
 
 //函数声明
 
@@ -64,11 +68,16 @@ void ServerIP_LAN(char *ip);
 void ServerQuit(int code);
 void* ServerTransmissionThread(void* ThreadArgv);
 char* ServerDataResolve(char* buf, int ThreadNum, bool flag);
+
+void BrickArrCreate(char* ret, int diff);
+
 void SocketCreate(SOCKET* soc, struct sockaddr_in *addr);
 void SocketListen(SOCKET soc, int backlog);
 void SocketAccept(const SOCKET* ser, SOCKET* cli, struct sockaddr_in* cli_addr);
 void SocketReceive(SOCKET soc, char* buf);
 void SocketSend(SOCKET soc, const char* buf);
-void recordf(const char* format, ...)__attribute__((__format__(printf, 1, 2)));
-void errorf(const char* format, ...)__attribute__((__format__(printf, 1, 2)));
+
+static inline void recordf(const char* format, ...)__attribute__((__format__(printf, 1, 2)));
+static inline void errorf(const char* format, ...)__attribute__((__format__(printf, 1, 2)));
+
 #endif

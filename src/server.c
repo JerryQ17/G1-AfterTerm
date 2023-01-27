@@ -7,6 +7,7 @@ int main(){
   //创建传输线程，互斥锁和条件变量
   pthread_mutex_init(&GameInitMutex, NULL);
   pthread_cond_init(&GameInitCond, NULL);
+  BrickArrCreate(BrickOrder, 0);
   for (int i = 0; i < 2; i++) {
     SocketAccept(&ServerSocket, &ClientSocket[i], &ClientAddr[i]);
     ClientNumber++;
@@ -17,6 +18,7 @@ int main(){
 }
 
 void ServerInit(void){
+  srand((unsigned int)time(NULL));
   //读取设置文件
   cfg = fopen(CFG_PATH, "r");
   if (cfg != NULL) {
@@ -29,8 +31,8 @@ void ServerInit(void){
     fclose(cfg);
   }else errorf("ServerInit: Fail to find cfg.txt\n");
   if (record){    //根据设置文件 以及日志文件是否能正常写入 来决定是否记录信息
-    log_file = fopen(LOG_PATH, "a+");
-    if (log_file == NULL) {   //日志文件不能正常写入 不记录信息
+    LogFile = fopen(LOG_PATH, "a+");
+    if (LogFile == NULL) {   //日志文件不能正常写入 不记录信息
       record = 0;
       errorf("Failed to open cfg/slog.txt\n");
     }else{
@@ -106,14 +108,7 @@ void* ServerTransmissionThread(void* ThreadArgv){
       ServerDataResolve(RecBuf, ARG, NET_TO_HOST);
       break;
     }else{
-      //pthread_mutex_lock(&TransmissionMutex[ARG]);
-      sscanf(RecBuf, "Client%*d,LocalBall(%d,%d),LocalBoard(%d,%d)",
-              &BallX[ARG], &BallY[ARG], &BoardX[ARG], &BoardY[ARG]);
       ServerDataResolve(RecBuf, ARG, NET_TO_HOST);
-      /*pthread_cond_signal(&TransmissionCond[ARG]);
-      pthread_mutex_unlock(&TransmissionMutex[ARG]);
-      pthread_mutex_lock(&TransmissionMutex[!ARG]);*/
-
     }
     memset(SendBuf, 0, BUF_SIZE);
     memset(RecBuf, 0, BUF_SIZE);
@@ -132,11 +127,11 @@ char* ServerDataResolve(char* buf, int ThreadNum, bool flag){    //服务端数�
       }else ServerQuit(EXIT_SUCCESS);
     }else{
       pthread_mutex_lock(&TransmissionMutex[ThreadNum]);
-      sscanf(buf, "Client%*d,LocalBall(%d,%d),LocalBoard(%d,%d)",
+      sscanf(buf, "Client%*d,LocalBall(%f,%f),LocalBoard(%d,%d)",
                       &BallX[ThreadNum], &BallY[ThreadNum], &BoardX[ThreadNum], &BoardY[ThreadNum]);
       pthread_mutex_unlock(&TransmissionMutex[ThreadNum]);
       pthread_mutex_lock(&TransmissionMutex[!ThreadNum]);
-      sprintf(rev, "Client%d,NetBall(%d,%d),NetBoard(%d,%d)",
+      sprintf(rev, "Client%d,NetBall(%f,%f),NetBoard(%d,%d)",
               !ThreadNum, BallX[!ThreadNum], BallY[!ThreadNum], BoardX[!ThreadNum], BoardY[!ThreadNum]);
       SocketSend(ClientSocket[ThreadNum], rev);
       pthread_mutex_unlock(&TransmissionMutex[!ThreadNum]);
@@ -147,10 +142,26 @@ char* ServerDataResolve(char* buf, int ThreadNum, bool flag){    //服务端数�
   }
 }
 
+void BrickArrCreate(char* ret, int diff){
+  bool choice[16][12] = {0};
+  strcpy(ret, "BrickInitialize:");
+  for (int i = 0; i < BrickNum[diff]; i++){
+    char add[BUF_SIZE] = {0};
+    int x = rand() % 15, y = rand() % 12, c = rand() % 5;
+    while (choice[x][y]){
+      x = rand() % 15;
+      y = rand() % 12;
+    }
+    choice[x][y] = true;
+    sprintf(add, "%d %d %d ", (x + 2) * 64, (y + 1) * 36, c);
+    strcat(ret, add);
+  }
+}
+
 void SocketCreate(SOCKET *soc, struct sockaddr_in *addr){
   *soc = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (*soc == INVALID_SOCKET) {
-    errorf("SocketCreate: socket failed, return %d, code %d\n", *soc, WSAGetLastError());
+    errorf("SocketCreate: socket failed, return %llu, code %d\n", *soc, WSAGetLastError());
     ServerQuit(SOCKET_FAILURE);
   }
   memset(addr, 0, sizeof(struct sockaddr_in));
@@ -188,12 +199,12 @@ void SocketAccept(const SOCKET* ser, SOCKET* cli, struct sockaddr_in* cli_addr){
   int size = sizeof(struct sockaddr);
   *cli = accept(*ser, (struct sockaddr*)cli_addr, &size);
   if (*cli == INVALID_SOCKET) {
-    errorf("SocketAccept: accept failed, return %d, code %d\n", cli, WSAGetLastError());
+    errorf("SocketAccept: accept failed, return %llu, code %d\n", *cli, WSAGetLastError());
     return;
   }
-  recordf("SocketAccept: accept success ser(soc%lld)(port%d) cli(soc%lld)(port%d)\n", *ser, *cli);
+  recordf("SocketAccept: accept success ser(soc%llu) cli(soc%llu)\n", *ser, *cli);
 #ifdef DEBUG
-  printf("SocketAccept: accept success ser(%lld) cli(%lld)\n", *ser, *cli);
+  printf("SocketAccept: accept success ser(%llu) cli(%llu)\n", *ser, *cli);
 #endif
 }
 
@@ -292,22 +303,23 @@ void SocketSend(SOCKET soc, const char* buf){
 #endif
 }
 
-void recordf(const char* format, ...){    //向日志文件中记录信息
+static inline void recordf(const char* format, ...){    //向日志文件中记录信息
   if (record){
     va_list ap;
     va_start(ap, format);
-    vfprintf(log_file, format, ap);
+    vfprintf(LogFile, format, ap);
     va_end(ap);
+    fflush(LogFile);
   }
 }
 
-void errorf(const char* format, ...){   //在日志和标准误差流中记录错误
+static inline void errorf(const char* format, ...){   //在日志和标准误差流中记录错误
   if (record) {
     va_list rp;
     va_start(rp, format);
-    vfprintf(log_file, format, rp);
+    vfprintf(LogFile, format, rp);
     va_end(rp);
-    fflush(log_file);
+    fflush(LogFile);
   }
   va_list ap;
   va_start(ap, format);

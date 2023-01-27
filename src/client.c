@@ -3,14 +3,14 @@
 int SDL_main(int argc, char* argv[]){
   //客户端初始化
   ClientCfgInit();
-  if (argc == 3) ClientInitAddr(argv[1], (u_short)strtol(argv[2], NULL, 10), LAN);
+  if (argc == 3) ClientIPInit(argv[1], (u_short) strtol(argv[2], NULL, 10), LAN);
   else {
     errorf("Invalid argv\n");
-    ClientInitAddr(NULL, 0, LAN);
+    ClientIPInit(NULL, 0, LAN);
   }
   ClientLibInit();
   ClientLoadResource();
-  ClientBGM();
+  ClientPlayBGM();
   ClientEventLoop();
   ClientQuit(EXIT_SUCCESS);
 }
@@ -29,8 +29,8 @@ void ClientCfgInit(void){
     fclose(cfg);
   }else errorf("ClientCfgInit: Fail to find cfg.txt\n");
   if (record){    //根据设置文件 以及日志文件是否能正常写入 来决定是否记录信息
-    log_file = fopen(LOG_PATH, "a+");
-    if (log_file == NULL) {   //日志文件不能正常写入 不记录信息
+    LogFile = fopen(LOG_PATH, "a+");
+    if (LogFile == NULL) {   //日志文件不能正常写入 不记录信息
       record = 0;
       errorf("Failed to open cfg/slog.txt\n");
     }else{
@@ -39,17 +39,17 @@ void ClientCfgInit(void){
     }
   }
   memset(&GameCondition, 0, sizeof(GameCondition));
-  GameCondition.GameState = MAIN;
+  state = MAIN;
 }
 
 void ClientLibInit(void){
   //客户端网络初始化
-  int WSAStartupValue = WSAStartup(MAKEWORD(2, 2), &data);
-  if (WSAStartupValue){
-    errorf("ClientLibInit: WSAStartup Failed, code %d\n", WSAStartupValue);
+  int wv = WSAStartup(MAKEWORD(2, 2), &data);
+  if (wv){
+    errorf("ClientLibInit: WSAStartup Failed, code %d\n", wv);
     time_t cur_time = time(NULL);
-    recordf("ClientLibInit: Program quit with code %d at %s\n", WSAStartupValue, ctime(&cur_time));
-    exit(WSAStartupValue);
+    recordf("ClientLibInit: Program quit with code %d at %s\n", wv, ctime(&cur_time));
+    exit(wv);
   }
   //客户端SDL初始化
   if (SDL_Init(SDL_INIT_VIDEO)) {   //SDL初始化失败
@@ -87,7 +87,7 @@ void ClientLibInit(void){
   }
 }
 
-void ClientInitAddr(char *IP, u_short port, bool flag){      //获取服务器的IP地址以及端口,flag控制局域网还是广域网
+void ClientIPInit(char *IP, u_short port, bool flag){      //获取服务器的IP地址以及端口,flag控制局域网还是广域网
   char tmpIP[8] = {0};
   strncat(tmpIP, ServerIP, 7);
   if ((!flag || !strcmp(tmpIP, "192.168")) && ServerPort > 1023) {  //cfg文件
@@ -109,8 +109,8 @@ void ClientInitAddr(char *IP, u_short port, bool flag){      //获取服务器�
   int step = 0;
   while (true) {                                                    //用户直接输入
     step++;
-    if (step > ADDR_STEP){
-      errorf("ClientInitAddr: init addr failed, over step\n");
+    if (step > IP_STEP){
+      errorf("ClientIPInit: IP initialization failed, over step\n");
       ClientQuit(IP_FAILURE);
     }
     printf("Input Server IP:\n");
@@ -143,18 +143,18 @@ void ClientEventLoop(void){
   SDL_Event event;
   while (true){
     while (SDL_PollEvent(&event)) {
-      if (GameCondition.GameState != MAIN && GameCondition.GameState != LOCAL_DEATH) BallMove(LocalBall);
-      if (GameCondition.GameState == TWO_PLAYER || GameCondition.GameState == LOCAL_DEATH) BallMove(NetBall);
+      //小球移动
+      if (state != MAIN && state != LOCAL_DEATH) BallMove(LocalBall);
+      if (state == TWO_PLAYER || state == LOCAL_DEATH) BallMove(NetBall);
       switch (event.type) {
-        case SDL_QUIT:  //关闭窗口
+        case SDL_QUIT:                                                //关闭窗口
           recordf("ClientEventLoop: Quit by SDL_QUIT\n");
-          if (GameCondition.GameState != MAIN) ClientGameQuit();
-          ClientQuit(EXIT_SUCCESS);
-          break;
+          if (state != MAIN) ClientGameQuit();
+          return;
         case SDL_KEYDOWN: //按下键盘
           switch (event.key.keysym.sym) {
-            case SDLK_ESCAPE: //Esc，退出
-              if (GameCondition.GameState == MAIN) {
+            case SDLK_ESCAPE:                                         //Esc，退出
+              if (state == MAIN) {
                 recordf("ClientEventLoop: Quit by Esc\n");
                 ClientQuit(EXIT_SUCCESS);
               } else {
@@ -165,31 +165,29 @@ void ClientEventLoop(void){
             case SDLK_UP: case SDLK_w:
             case SDLK_DOWN: case SDLK_s:
             case SDLK_LEFT: case SDLK_a:
-            case SDLK_RIGHT: case SDLK_d:
-              if (GameCondition.GameState != MAIN) {
+            case SDLK_RIGHT: case SDLK_d:                             //移动挡板
+              if (state != MAIN) {
                 BoardMove(LocalBoard, LocalBall, event.key.keysym.sym);
               }
+              break;
+            case SDLK_RETURN: case SDLK_KP_ENTER: case SDLK_SPACE:    //小球出发
+              LocalBall->SetOff = true;
               break;
             default: break;
           }
           break;
-        case SDL_MOUSEBUTTONDOWN:
-          recordf("ClientEventLoop: Mouse button down (%d, %d)\n", event.button.x, event.button.y);
-#ifdef DEBUG
-          printf("ClientEventLoop: Mouse button down (%d, %d)\n", event.button.x, event.button.y);
-#endif
-          break;
-        case SDL_MOUSEBUTTONUP:recordf("ClientEventLoop: Mouse button up (%d, %d)\n", event.button.x, event.button.y);
-          if (GameCondition.GameState == MAIN) {    //主界面
+        case SDL_MOUSEBUTTONUP:
+          recordf("ClientEventLoop: Mouse button up (%d, %d)\n", event.button.x, event.button.y);
+          if (state == MAIN) {    //主界面
             if (event.button.x > SINGLE_MIN_X && event.button.x < SINGLE_MAX_X
                 && event.button.y > SINGLE_MIN_Y && event.button.y < SINGLE_MAX_Y) {  //单人
               recordf("ClientEventLoop: Game start, one player\n");
-              GameCondition.GameState = ONE_PLAYER;
+              state = ONE_PLAYER;
               ClientGameInit();
             } else if (event.button.x > DOUBLE_MIN_X && event.button.x < DOUBLE_MAX_X //多人
                 && event.button.y > DOUBLE_MIN_Y && event.button.y < DOUBLE_MAX_Y) {
               recordf("ClientEventLoop: Game start, two player\n");
-              GameCondition.GameState = TWO_PLAYER;
+              state = TWO_PLAYER;
               ClientGameInit();
             } else if (event.button.x > README_MIN_X && event.button.x < README_MAX_X
                 && event.button.y > README_MIN_Y && event.button.y < README_MAX_Y) { //帮助
@@ -206,31 +204,45 @@ void ClientEventLoop(void){
                 && event.button.y < RETURN_MAX_Y) {  //返回主界面
               recordf("ClientEventLoop: Return mainUI\n");
               ClientGameQuit();
+            }else if (!LocalBall->SetOff){
+              //处理k和dir
+              if (event.button.x - ObjectMidX(LocalBall)) {
+                LocalBall->k = -(event.button.y - ObjectMidY(LocalBall)) / (event.button.x - ObjectMidX(LocalBall));
+                LocalBall->dir = (LocalBall->k >= 0 ? RIGHT : LEFT);
+              }else{
+                LocalBall->k = BallInitialK;
+                LocalBall->dir = VERTICAL;
+              }
             }
           }
+#ifdef DEBUG
+          printf("ClientEventLoop: Mouse button up (%d, %d)\n", event.button.x, event.button.y);
+#endif
           break;
         default:break;
       }
       ClientRender();
+      if (state != MAIN) ClientGameChange();
     }
   }
 }
 
 void ClientGameInit(void){
-  GameCondition.GameDifficulty = EASY;
-  //为砖块数组申请空间，并将NetBoard生命值设为0，使得单人游戏时不会渲染NetBoard，NetBall
+  difficulty = EASY;
+  //为弹板申请空间，并将NetBoard生命值设为0，使得单人游戏时不会渲染NetBoard，NetBall
   LocalBoard = calloc(1, sizeof(Board));
   NetBoard = calloc(1, sizeof(Board));
   NetBoard->life = 0;
-  //为砖块数组申请空间
+  //为小球申请空间
   LocalBall = calloc(1, sizeof(Ball));
   NetBall = calloc(1, sizeof(Ball));
   //为砖块数组申请空间
-  BrickArr = calloc(BrickNum[GameCondition.GameDifficulty], sizeof(Brick));
+  BrickArr = calloc(BrickNum[difficulty], sizeof(Brick));
   //判断单人游戏还是多人游戏，创建对象（创建线程），渲染gameUI
-  if (GameCondition.GameState == ONE_PLAYER){
+  if (state == ONE_PLAYER){
     BoardCreate(LocalBoard, RED);
     BallCreate(LocalBall, LocalBoard);
+    BrickArrCreate(BrickArr);
     ClientRender();
   }else {
     //创建传输线程，互斥锁和条件变量
@@ -262,24 +274,41 @@ void ClientGameInit(void){
     pthread_mutex_init(&BoardMoveMutex, NULL);
     pthread_cond_init(&BoardMoveCond, NULL);
   }
-  ClientBGM();
+  ClientPlayBGM();
+}
+
+void ClientGameChange(void){
+  for (int i = 0; i < BrickNum[difficulty]; i++){
+    if (BrickArr[i].life) return;
+  }
+  if (state == ONE_PLAYER){
+    BrickArrDestroy(BrickArr);
+    difficulty++;
+    if (difficulty > HARD) {
+      ClientGameQuit();
+    }
+    BrickArr = calloc(BrickNum[difficulty], sizeof(Brick));
+    BrickArrCreate(BrickArr);
+  }
 }
 
 void ClientGameQuit(void){
-  if (GameCondition.GameState != ONE_PLAYER) {
-    SocketSend(ServerSocket, "quit");
+  if (state != ONE_PLAYER) {
     pthread_cancel(TransmissionThread);
+    pthread_join(TransmissionThread, NULL);
+    SocketSend(ServerSocket, "quit");
     BallDestroy(NetBall);
     BoardDestroy(NetBoard);
     pthread_mutex_destroy(&BoardMoveMutex);
     pthread_cond_destroy(&BoardMoveCond);
   }
-  //TODO
+  BrickArrDestroy(BrickArr);
+  BrickPre = false;
   BallDestroy(LocalBall);
   BoardDestroy(LocalBoard);
-  GameCondition.GameState = MAIN;
+  state = MAIN;
   ClientRender();
-  ClientBGM();
+  ClientPlayBGM();
 }
 
 void ClientQuit(int code){
@@ -335,7 +364,7 @@ void ClientConnect(SOCKET *server, SOCKADDR_IN* server_addr){
 void* ClientTransmissionThread(void* ThreadArgv){
   ClientConnect(&ServerSocket, &ServerAddr);    //连接服务器
   while (true) {    //传输的循环
-    if (GameCondition.GameState == MAIN){
+    if (state == MAIN){
       pthread_exit(NULL);
       break;    //细节break，虽然没用，但是可以少一个Endless Loop的Warning
     }
@@ -355,9 +384,15 @@ void* ClientTransmissionThread(void* ThreadArgv){
       pthread_mutex_lock(&GameWaitMutex);
       SocketSend(ServerSocket, "ClientReady");
       SocketReceive(ServerSocket, Receive);
-      for (int i = 0; i < BrickNum[GameCondition.GameDifficulty]; i++){
-        //TODO
+      //根据服务端的数据来对砖块初始化
+      char *ptr = strchr(Receive, ':');
+      for (int i = 0; i < BrickNum[difficulty]; i++){
+        int x = strtol(ptr + 1, &ptr, 10);
+        int y = strtol(ptr + 1, &ptr, 10);
+        Element color = strtol(ptr + 1, &ptr, 10);
+        BrickCreate(&BrickArr[i], x, y ,color);
       }
+      BrickPre = true;
       pthread_cond_signal(&GameWaitCond);
       pthread_mutex_unlock(&GameWaitMutex);
       ARG++;
@@ -378,10 +413,10 @@ void* ClientTransmissionThread(void* ThreadArgv){
 
 void ClientDataResolve(char* buf, int flag){    //客户端数据解析
   if (flag == HOST_TO_NET){
-    sprintf(buf, "Client%d,LocalBall(%d,%d),LocalBoard(%d,%d)", GameCondition.LocalNum,
+    sprintf(buf, "Client%d,LocalBall(%f,%f),LocalBoard(%d,%d)", GameCondition.LocalNum,
             GameCondition.LocalBallX, GameCondition.LocalBallY, GameCondition.LocalBoardX, GameCondition.LocalBoardY);
   }else if (flag == NET_TO_HOST){
-    sscanf(buf, "Client%*d,NetBall(%d,%d),NetBoard(%d,%d)",
+    sscanf(buf, "Client%*d,NetBall(%f,%f),NetBoard(%d,%d)",
             &GameCondition.NetBallX, &GameCondition.NetBallY, &GameCondition.NetBoardX, &GameCondition.NetBoardY);
     NetBoard->DestRect.x = GameCondition.NetBoardX;
     NetBoard->DestRect.y = GameCondition.NetBoardY;
@@ -391,62 +426,94 @@ void ClientDataResolve(char* buf, int flag){    //客户端数据解析
 }
 
 void ClientRender(void){    //客户端UI渲染
+  //清空渲染器
   SDL_RenderClear(Renderer);
-  if (GameCondition.GameState == MAIN) {
+  //根据游戏状态来区分渲染内容
+  if (state == MAIN) {  //渲染mainUI
     MainTexture = SDL_CreateTextureFromSurface(Renderer, MainSurface);
     SDL_RenderCopy(Renderer, MainTexture, NULL, &MainRect);
     SDL_RenderPresent(Renderer);
     SDL_DestroyTexture(MainTexture);
-  } else {
+  } else {    //渲染gameUI
     GameTexture = SDL_CreateTextureFromSurface(Renderer, GameSurface);
     SDL_RenderCopy(Renderer, GameTexture, NULL, &GameRect);
+    if (BrickPre) {   //如果砖块已经初始化，就渲染砖块
+      for (int i = 0; i < BrickNum[difficulty]; i++) {
+        if (BrickArr[i].life) {
+          BrickArr[i].tex = SDL_CreateTextureFromSurface(Renderer, BrickArr[i].sur);
+          SDL_SetTextureBlendMode(BrickArr[i].tex, SDL_BLENDMODE_BLEND);
+          SDL_SetTextureAlphaMod(BrickArr[i].tex, BrickArr[i].alpha);
+          SDL_RenderCopy(Renderer, BrickArr[i].tex, NULL, &BrickArr[i].DestRect);
+          SDL_DestroyTexture(BrickArr[i].tex);
+        }
+      }
+    }
     if (LocalBoard->life) {
       LocalBoard->tex = SDL_CreateTextureFromSurface(Renderer, LocalBoard->sur);
+      SDL_SetTextureBlendMode(LocalBoard->tex, SDL_BLENDMODE_BLEND);
+      SDL_SetTextureAlphaMod(LocalBoard->tex, LocalBoard->alpha);
       SDL_RenderCopy(Renderer, LocalBoard->tex, &LocalBoard->SourceRect, &LocalBoard->DestRect);
       SDL_DestroyTexture(LocalBoard->tex);
       LocalBall->tex = SDL_CreateTextureFromSurface(Renderer, LocalBall->sur);
-      SDL_RenderCopy(Renderer, LocalBall->tex, NULL, &LocalBall->DestRect);
+      SDL_RenderCopyF(Renderer, LocalBall->tex, NULL, &LocalBall->DestRect);
       SDL_DestroyTexture(LocalBall->tex);
     }
-    if (GameCondition.GameState != ONE_PLAYER && NetBoard->life) {
+    if (state != ONE_PLAYER && state != NET_DEATH && NetBoard->life) {
       NetBoard->tex = SDL_CreateTextureFromSurface(Renderer, NetBoard->sur);
+      SDL_SetTextureBlendMode(NetBoard->tex, SDL_BLENDMODE_BLEND);
+      SDL_SetTextureAlphaMod(NetBoard->tex, NetBoard->alpha);
       SDL_RenderCopy(Renderer, NetBoard->tex, &NetBoard->SourceRect, &NetBoard->DestRect);
       SDL_DestroyTexture(NetBoard->tex);
       NetBall->tex = SDL_CreateTextureFromSurface(Renderer, NetBall->sur);
-      SDL_RenderCopy(Renderer, NetBall->tex, NULL, &NetBall->DestRect);
+      SDL_RenderCopyF(Renderer, NetBall->tex, NULL, &NetBall->DestRect);
       SDL_DestroyTexture(NetBall->tex);
     }
+    char ScoreText[4] = {0};
+    sprintf(ScoreText, "%d", LocalBall->score);
+    ClientDrawText(ScoreText, SCORE_X, SCORE_Y, false);
     SDL_RenderPresent(Renderer);
     SDL_DestroyTexture(GameTexture);
   }
 }
 
-void ClientBGM(void){
+void ClientPlayBGM(void){
   Mix_HaltMusic();
-  bgm = Mix_LoadMUS(BgmPathVec[GameCondition.GameState]);
-  Mix_VolumeMusic(BgmVolumeVec[GameCondition.GameState]);
+  bgm = Mix_LoadMUS(BgmPathVec[state]);
+  Mix_VolumeMusic(BgmVolumeVec[state]);
   Mix_PlayMusic(bgm, -1);
 }
 
+void ClientDrawText(const char *text, int x, int y, bool pre){   //根据参数渲染文本
+  FontSurface = TTF_RenderUTF8_Blended(Font, text, FontColor);
+  FontTexture = SDL_CreateTextureFromSurface(Renderer, FontSurface);
+  FontRect = (SDL_Rect){x, y, FontSurface->w, FontSurface->h};
+  SDL_RenderCopy(Renderer, FontTexture, NULL, &FontRect);
+  if (pre) SDL_RenderPresent(Renderer);
+  //末处理
+  SDL_FreeSurface(FontSurface);
+  SDL_DestroyTexture(FontTexture);
+}
+
 void BoardCreate(Board* const board, const bool color){   //创建Board对象
-  board->life = BoardLifeVec[GameCondition.GameDifficulty];
+  board->life = BoardLifeVec[difficulty];
+  board->alpha = UINT8_MAX;
   board->sur = IMG_Load(color == RED ? RED_BOARD_PATH : BLUE_BOARD_PATH);
   board->tex = SDL_CreateTextureFromSurface(Renderer, board->sur);
-  board->SourceRect.w = BoardLenVec[GameCondition.GameDifficulty];
+  board->SourceRect.w = BoardLenVec[difficulty];
   board->SourceRect.h = board->sur->h;
   board->DestRect.y = BOARD_INIT_Y;
   board->DestRect.w = board->SourceRect.w;
   board->DestRect.h = board->sur->h;
-  if (GameCondition.GameState == ONE_PLAYER){
+  if (state == ONE_PLAYER){
     board->DestRect.x = (WIN_WIDTH - board->SourceRect.w) / 2;
-  }else if (GameCondition.GameState == TWO_PLAYER){
+  }else if (state == TWO_PLAYER){
     board->DestRect.x = WIN_WIDTH * (color == RED ? 3 : 1) / 4 - board->SourceRect.w / 2;
   }
 }
 
-static inline void BoardMove(Board* board, Ball* const ball, SDL_KeyCode const operation){   //弹板移动
-  if (GameCondition.GameState != MAIN && GameCondition.GameState != LOCAL_DEATH){
-    if (GameCondition.GameState != ONE_PLAYER){
+void BoardMove(Board* board, Ball* const ball, SDL_KeyCode const operation){   //弹板移动
+  if (state != MAIN && state != LOCAL_DEATH){
+    if (state != ONE_PLAYER){
       pthread_mutex_lock(&BoardMoveMutex);
     }
     switch (operation) {
@@ -457,15 +524,15 @@ static inline void BoardMove(Board* board, Ball* const ball, SDL_KeyCode const o
         if (board->DestRect.y + board->DestRect.h < WIN_HEIGHT) board->DestRect.y++;
         break;
       case SDLK_a: case SDLK_LEFT:  //左移
-        if (board->DestRect.x >= BoardMoveSpeedVec[GameCondition.GameDifficulty]){
-          board->DestRect.x -= BoardMoveSpeedVec[GameCondition.GameDifficulty];
+        if (board->DestRect.x >= BoardMoveSpeedVec[difficulty]){
+          board->DestRect.x -= BoardMoveSpeedVec[difficulty];
         }else {
           board->DestRect.x = 0;
         }
         break;
       case SDLK_d: case SDLK_RIGHT: //右移
-        if (board->DestRect.x + board->DestRect.w + BoardMoveSpeedVec[GameCondition.GameDifficulty] < WIN_WIDTH){
-          board->DestRect.x += BoardMoveSpeedVec[GameCondition.GameDifficulty];
+        if (board->DestRect.x + board->DestRect.w + BoardMoveSpeedVec[difficulty] < WIN_WIDTH){
+          board->DestRect.x += BoardMoveSpeedVec[difficulty];
         }else if (board->DestRect.x + board->DestRect.w < WIN_WIDTH){
           board->DestRect.x = WIN_WIDTH - board->DestRect.w;
         }
@@ -473,10 +540,10 @@ static inline void BoardMove(Board* board, Ball* const ball, SDL_KeyCode const o
       default:break;
     }
     if (!ball->SetOff) {
-      ball->DestRect.x = board->DestRect.x + (board->DestRect.w - ball->sur->w) / 2;
-      ball->DestRect.y = board->DestRect.y - ball->sur->h;
+      ball->DestRect.x = (float)board->DestRect.x + (float)(board->DestRect.w - ball->sur->w) / 2;
+      ball->DestRect.y = (float)board->DestRect.y - (float)ball->sur->h;
     }
-    if (GameCondition.GameState != ONE_PLAYER){
+    if (state != ONE_PLAYER){
       pthread_cond_signal(&BoardMoveCond);
       pthread_mutex_unlock(&BoardMoveMutex);
     }
@@ -493,6 +560,7 @@ void BoardDestroy(Board* const board){   //销毁Board对象
 }
 
 void BallCreate(Ball* ball, Board* const board){   //创建Ball对象
+  ball->score = 0;
   ball->SetOff = false;
   ball->dir = VERTICAL;
   ball->k = BallInitialK;
@@ -500,52 +568,129 @@ void BallCreate(Ball* ball, Board* const board){   //创建Ball对象
   ball->element = EMPTY;
   ball->sur = IMG_Load(BallPathVec[EMPTY]);
   ball->tex = SDL_CreateTextureFromSurface(Renderer, ball->sur);
-  ball->DestRect.x = board->DestRect.x + (board->DestRect.w - ball->sur->w) / 2;
-  ball->DestRect.y = board->DestRect.y - ball->sur->h;
-  ball->DestRect.w = ball->sur->w;
-  ball->DestRect.h = ball->sur->h;
+  ball->DestRect.x = (float)board->DestRect.x + (float)(board->DestRect.w - ball->sur->w) / 2;
+  ball->DestRect.y = (float)board->DestRect.y - (float)ball->sur->h;
+  ball->DestRect.w = (float)ball->sur->w;
+  ball->DestRect.h = (float)ball->sur->h;
 }
 
-static inline void BallMove(Ball* const ball){            //小球移动
+void BallMove(Ball* const ball){            //小球移动
   //检查是否满足移动条件
   if (!ball->board->life || !ball->SetOff) {              //如果生命值为0或者没有出发，就不能移动
     return;
   }
+  //与砖块碰撞
+  bool flag = true;
+  for (int i = 0; i < BrickNum[difficulty]; i++){
+    if (BrickArr[i].life) {
+      if (ObjectMidY(ball) >= ObjectMinY(&BrickArr[i]) - 1 &&
+          ObjectMidY(ball) <= ObjectMinY(&BrickArr[i]) + 1 &&
+          ObjectMidX(ball) >= ObjectMinX(&BrickArr[i]) &&
+          ObjectMidX(ball) <= ObjectMaxX(&BrickArr[i])) {         //上方
+        BallHit(ball, &BrickArr[i], "bu");
+        flag = false;
+        break;
+      }else if (ObjectMidY(ball) >= ObjectMaxY(&BrickArr[i]) - 1 &&
+          ObjectMidY(ball) <= ObjectMaxY(&BrickArr[i]) + 1 &&
+          ObjectMidX(ball) >= ObjectMinX(&BrickArr[i]) &&
+          ObjectMidX(ball) <= ObjectMaxX(&BrickArr[i])){        //下方
+        BallHit(ball, &BrickArr[i], "bd");
+        flag = false;
+        break;
+      }else if (ObjectMidX(ball) >= ObjectMinX(&BrickArr[i]) - 1 &&
+          ObjectMidX(ball) <= ObjectMinX(&BrickArr[i]) + 1 &&
+          ObjectMidY(ball) >= ObjectMinY(&BrickArr[i]) &&
+          ObjectMidY(ball) <= ObjectMaxY(&BrickArr[i])) {        //左侧
+        BallHit(ball, &BrickArr[i], "bl");
+        flag = false;
+        break;
+      } else if (ObjectMidX(ball) >= ObjectMaxX(&BrickArr[i]) - 1 &&
+          ObjectMidX(ball) <= ObjectMaxX(&BrickArr[i]) + 1 &&
+          ObjectMidY(ball) >= ObjectMinY(&BrickArr[i]) &&
+          ObjectMidY(ball) <= ObjectMaxY(&BrickArr[i])) {        //右侧
+        BallHit(ball, &BrickArr[i], "br");
+        flag = false;
+        break;
+      }
+    }
+  }
   //碰撞检查
-  if (BallMaxY(ball) >= WIN_HEIGHT){                      //如果小球碰到屏幕底端，生命值-1，并重置小球和弹板的位置
-    ball->board->life--;
-    if (GameCondition.GameState != ONE_PLAYER){
-      pthread_mutex_lock(&BoardMoveMutex);
+  if (flag) {
+    if (ObjectMaxY(ball) >= WIN_HEIGHT) {                      //如果小球碰到屏幕底端，生命值-1，并重置小球和弹板的位置
+      BallHit(ball, NULL, "sd");
+    } else if (ObjectMinX(ball) <= 0) {                         //如果小球碰到屏幕左端，反弹
+      BallHit(ball, NULL, "sl");
+    } else if (ObjectMaxX(ball) >= WIN_WIDTH) {                 //如果小球碰到屏幕右端，反弹
+      BallHit(ball, NULL, "sr");
+    } else if (ObjectMinY(ball) <= 0 ||
+    (ObjectMaxY(ball) >= (float)ball->board->DestRect.y &&
+    ObjectMinX(ball) >= (float)ObjectMinX(ball->board) &&
+    ObjectMaxX(ball) <= ObjectMaxX((ball->board)))) {
+      BallHit(ball, NULL, "su");                    //如果小球碰到屏幕顶端或自己的挡板顶端，反弹
     }
-    ball->board->DestRect.x = GameCondition.GameState == ONE_PLAYER ?
-        (WIN_WIDTH - ball->board->SourceRect.w) / 2 :
-        WIN_WIDTH * (GameCondition.LocalNum == RED ? 3 : 1) / 4 - ball->board->SourceRect.w / 2;
-    ball->board->DestRect.y = BOARD_INIT_Y;
-    if (GameCondition.GameState != ONE_PLAYER){
-      pthread_mutex_unlock(&BoardMoveMutex);
-    }
-    ball->dir = VERTICAL;
-    ball->k = BallInitialK;
-    ball->DestRect.x = ball->board->DestRect.x + (ball->board->DestRect.w - ball->sur->w) / 2;
-    ball->DestRect.y = ball->board->DestRect.y - ball->sur->h;
-  }else if (BallMinX(ball) <= 0){                         //如果小球碰到屏幕左端，反弹
-    ball->dir = RIGHT;
-    ball->k = -ball->k;
-  }else if (BallMaxX(ball) >= WIN_WIDTH){                 //如果小球碰到屏幕右端，反弹
-    ball->dir = LEFT;
-    ball->k = -ball->k;
-  }else if (BallMinY(ball) <= 0 || BallMaxY(ball) >= ball->board->DestRect.y){
-    ball->k = -ball->k;                                   //如果小球碰到屏幕顶端或自己的挡板，反弹
   }
   //根据方向和斜率移动
+  /*特殊情况*/
   if (ball->dir == VERTICAL) {                            //方向为Vertical时，单独处理
-    ball->DestRect.y += (ball->k > 0 ? -1 : 1) * BallMoveSpeedVec[GameCondition.GameDifficulty];
-  }else if (fabs(ball->k) > 1) {                        //斜率大于1
-    ball->DestRect.x += ball->dir * BallMoveSpeedVec[GameCondition.GameDifficulty];
-    ball->DestRect.y += (int)(ball->dir * ball->k * BallMoveSpeedVec[GameCondition.GameDifficulty]);
-  }else{                                                  //斜率小于等于1
-    ball->DestRect.x += (int)(ball->dir / ball->k * BallMoveSpeedVec[GameCondition.GameDifficulty]);
-    ball->DestRect.y += ball->dir * BallMoveSpeedVec[GameCondition.GameDifficulty];
+    ball->DestRect.y += (float)((ball->k > 0 ? -1 : 1) * BallMoveSpeedVec[difficulty]);
+    return;
+  }
+  /*一般情况*/
+  double dx, dy;
+  dx = sqrt(BallMoveSpeedVec[difficulty] / (pow(ball->k, 2) + 1));
+  dy = dx * ball->k;
+  ball->DestRect.x += (float)(ball->dir * dx);
+  ball->DestRect.y += (float)(ball->dir * dy);
+}
+
+void BallHit(Ball* ball, Brick* brick, char* mode){   //小球与对象的碰撞
+  if (!strcmp(mode, "bu") || !strcmp(mode, "bd")){    //砖块上方或下方
+    ball->k = -ball->k;
+    ball->score++;
+    brick->life--;
+    brick->alpha = (uint8_t)((double)(brick->life) / BrickLifeVec[difficulty] * UINT8_MAX);\
+  }else if (!strcmp(mode, "bl")){                     //砖块左侧
+    ball->dir = LEFT;
+    ball->score++;
+    ball->k = -ball->k;
+    brick->life--;
+    brick->alpha = (uint8_t)((double)(brick->life) / BrickLifeVec[difficulty] * UINT8_MAX);
+  }else if (!strcmp(mode, "br")){                       //砖块右侧
+    ball->dir = RIGHT;
+    ball->score++;
+    ball->k = -ball->k;
+    brick->life--;
+    brick->alpha = (uint8_t)((double)(brick->life) / BrickLifeVec[difficulty] * UINT8_MAX);
+  }else if (!strcmp(mode, "su")){                       //屏幕上方
+    ball->k = -ball->k;
+  }else if (!strcmp(mode, "sd")){                       //屏幕下方
+    //先修改挡板的属性
+    if (state != ONE_PLAYER) {
+      pthread_mutex_lock(&BoardMoveMutex);
+    }
+    ball->board->life--;
+    ball->board->alpha = (uint8_t)((double)(ball->board->life) / BoardLifeVec[difficulty] * UINT8_MAX);
+    ball->board->DestRect.x = state == ONE_PLAYER ?
+                              (WIN_WIDTH - ball->board->SourceRect.w) / 2 :
+                              WIN_WIDTH * (GameCondition.LocalNum == RED ? 3 : 1) / 4 - ball->board->SourceRect.w / 2;
+    ball->board->DestRect.y = BOARD_INIT_Y;
+    if (state != ONE_PLAYER) {
+      pthread_mutex_unlock(&BoardMoveMutex);
+    }
+    //再修改小球的属性
+    ball->SetOff = false;
+    ball->dir = VERTICAL;
+    ball->k = BallInitialK;
+    ball->DestRect.x = (float)ball->board->DestRect.x + (float)(ball->board->DestRect.w - ball->sur->w) / 2;
+    ball->DestRect.y = (float)ball->board->DestRect.y - (float)ball->sur->h;
+  }else if (!strcmp(mode, "sl")){                       //屏幕左侧
+    ball->dir = RIGHT;
+    ball->k = -ball->k;
+  }else if (!strcmp(mode, "sr")){                       //屏幕右侧
+    ball->dir = LEFT;
+    ball->k = -ball->k;
+  }else{
+    errorf("BallHit: Incompatible Mode\n");
   }
 }
 
@@ -555,15 +700,36 @@ void BallDestroy(Ball* const ball){   //销毁Ball对象
 }
 
 void BrickCreate(Brick* const brick, const int x, const int y, const Element color){
-  brick->life = BrickLifeVec[GameCondition.GameDifficulty];
+  brick->life = BrickLifeVec[difficulty];
   brick->element = color;
-  brick->alpha = 0xff;
+  brick->alpha = UINT8_MAX;
   brick->sur = IMG_Load(BrickPathVec[color]);
   brick->tex = SDL_CreateTextureFromSurface(Renderer, brick->sur);
   brick->DestRect.x = x;
   brick->DestRect.y = y;
   brick->DestRect.w = brick->sur->w;
   brick->DestRect.h = brick->sur->h;
+}
+
+void BrickArrCreate(Brick* const arr){
+  bool choice[16][12] = {0};
+  for (int i = 0; i < BrickNum[difficulty]; i++) {
+    int x = rand() % 15, y = rand() % 12, c = rand() % 5;
+    while (choice[x][y]) {
+      x = rand() % 15;
+      y = rand() % 12;
+    }
+    choice[x][y] = true;
+    BrickCreate(&arr[i], (x + 2) * 64, (y + 1) * 36, c);
+  }
+  BrickPre = true;
+}
+
+void BrickArrDestroy(Brick* const arr){
+  for (int i = 0; i < BrickNum[difficulty]; i++){
+    BrickDestroy(&arr[i]);
+  }
+  free(arr);
 }
 
 void BrickDestroy(Brick* const brick){
@@ -666,36 +832,27 @@ void SocketSend(SOCKET soc, const char* buf){
 #endif
 }
 
-void ClientDrawText(const char *text, int x, int y, bool pre){   //根据参数渲染文本
-  FontSurface = TTF_RenderUTF8_Blended(Font, text, FontColor);
-  FontTexture = SDL_CreateTextureFromSurface(Renderer, FontSurface);
-  FontRect = (SDL_Rect){x, y, FontSurface->w, FontSurface->h};
-  SDL_RenderCopy(Renderer, FontTexture, NULL, &FontRect);
-  if (pre) SDL_RenderPresent(Renderer);
-  //末处理
-  SDL_FreeSurface(FontSurface);
-  SDL_DestroyTexture(FontTexture);
-}
-
-void recordf(const char* format, ...){    //向日志文件中记录信息
+static inline void recordf(const char* format, ...){    //向日志文件中记录信息
   if (record){
     va_list ap;
     va_start(ap, format);
-    vfprintf(log_file, format, ap);
+    vfprintf(LogFile, format, ap);
     va_end(ap);
+    fflush(LogFile);
   }
 }
 
-void errorf(const char* format, ...){   //在日志和标准误差流中记录错误
+static inline void errorf(const char* format, ...){   //在日志和标准误差流中记录错误
   if (record) {
     va_list rp;
     va_start(rp, format);
-    vfprintf(log_file, format, rp);
+    vfprintf(LogFile, format, rp);
     va_end(rp);
-    fflush(log_file);
+    fflush(LogFile);
   }
   va_list ap;
   va_start(ap, format);
   vfprintf(stderr, format, ap);
   va_end(ap);
+  fflush(stderr);
 }
