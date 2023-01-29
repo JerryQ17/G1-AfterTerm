@@ -18,7 +18,7 @@ int main(){
 }
 
 void ServerInit(void){
-  srand((unsigned int)time(NULL));
+  srand((UINT)time(NULL));
   //读取设置文件
   cfg = fopen(CFG_PATH, "r");
   if (cfg != NULL) {
@@ -99,10 +99,10 @@ void* ServerTransmissionThread(void* ThreadArgv){
       sprintf(SendBuf, "Client%d", ARG);
       SocketSend(ClientSocket[ARG], SendBuf);
     }else if (!strcmp(RecBuf, "ClientReady")){
+      SocketSend(ClientSocket[ARG], BrickOrder);
       pthread_mutex_lock(&GameInitMutex);
       if (ARG) pthread_cond_signal(&GameInitCond);
       else pthread_cond_wait(&GameInitCond, &GameInitMutex);
-      SocketSend(ClientSocket[ARG], "GameReady");
       pthread_mutex_unlock(&GameInitMutex);
     }else if (!strcmp(RecBuf, "quit")) {
       ServerDataResolve(RecBuf, ARG, NET_TO_HOST);

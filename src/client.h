@@ -29,26 +29,29 @@
 #define FONT_SIZE   60              //字体大小
 #define CFG_ITEM    3               //配置数量
 
-#define SINGLE_MIN_X 255            //mainUI的单人按钮的x最小值
-#define SINGLE_MAX_X 512            //mainUI的单人按钮的x最大值
-#define SINGLE_MIN_Y 384            //mainUI的单人按钮的y最小值
-#define SINGLE_MAX_Y 513            //mainUI的单人按钮的y最大值
-#define DOUBLE_MIN_X SINGLE_MAX_X   //mainUI的多人按钮的x最小值
-#define DOUBLE_MAX_X 770            //mainUI的多人按钮的x最大值
-#define DOUBLE_MIN_Y SINGLE_MIN_Y   //mainUI的多人按钮的y最小值
-#define DOUBLE_MAX_Y SINGLE_MAX_Y   //mainUI的多人按钮的y最大值
-#define README_MIN_X DOUBLE_MAX_X   //mainUI的帮助按钮的x最小值
-#define README_MAX_X 1025           //mainUI的单人按钮的x最大值
-#define README_MIN_Y SINGLE_MIN_Y   //mainUI的帮助按钮的y最小值
-#define README_MAX_Y SINGLE_MAX_Y   //mainUI的帮助按钮的y最大值
-#define RETURN_MAX_X 144
-#define RETURN_MAX_Y 72
-#define USER_TIP_X   400
-#define USER_TIP_Y   600
-#define SCORE_X      1200
-#define SCORE_Y      10
-#define BOARD_MIN_Y  600
-#define BOARD_INIT_Y 650
+#define SINGLE_MIN_X  255            //mainUI的单人按钮的x最小值
+#define SINGLE_MAX_X  512            //mainUI的单人按钮的x最大值
+#define SINGLE_MIN_Y  384            //mainUI的单人按钮的y最小值
+#define SINGLE_MAX_Y  513            //mainUI的单人按钮的y最大值
+#define DOUBLE_MIN_X  SINGLE_MAX_X   //mainUI的多人按钮的x最小值
+#define DOUBLE_MAX_X  770            //mainUI的多人按钮的x最大值
+#define DOUBLE_MIN_Y  SINGLE_MIN_Y   //mainUI的多人按钮的y最小值
+#define DOUBLE_MAX_Y  SINGLE_MAX_Y   //mainUI的多人按钮的y最大值
+#define README_MIN_X  DOUBLE_MAX_X   //mainUI的帮助按钮的x最小值
+#define README_MAX_X  1025           //mainUI的单人按钮的x最大值
+#define README_MIN_Y  SINGLE_MIN_Y   //mainUI的帮助按钮的y最小值
+#define README_MAX_Y  SINGLE_MAX_Y   //mainUI的帮助按钮的y最大值
+#define RETURN_MAX_X  144
+#define RETURN_MAX_Y  72
+#define USER_TIP_X    400
+#define USER_TIP_Y    600
+#define SCORE_X       1190
+#define SCORE_Y       10
+#define WL_X          525
+#define WL_Y          330
+#define WL_DELAY      2000
+#define BOARD_MIN_Y   600
+#define BOARD_INIT_Y  650
 
 #define IP_FAILURE              1
 #define SOCKET_FAILURE          2
@@ -72,7 +75,7 @@
 
 #define MES_MAX_LEN   4
 #define BUF_SIZE      1000
-#define IP_STEP     5
+#define IP_STEP       5
 #define CONNECT_STEP  20
 #define SEND_STEP     20
 #define RECEIVE_STEP  20
@@ -185,10 +188,10 @@ static game_condition GameCondition;
 
 static const int BoardLenVec[] = {200, 150, 100};
 static const int BoardLifeVec[] = {10, 8, 5};
-static const int BoardMoveSpeedVec[] = {5, 4, 3};
+static const int BoardMoveSpeedVec[] = {10, 8, 5};
 
 static const double BallInitialK = 100;
-static const int BallMoveSpeedVec[] = {1, 2, 3};
+static const double BallMoveSpeedVec[] = {0.5, 1.0, 1.5};
 static const char* BallPathVec[] = {"img/FireBall.png",
                                     "img/WaterBall.png",
                                     "img/IceBall.png",
@@ -266,7 +269,7 @@ void BoardDestroy(Board* board);
 
 void BallCreate(Ball* ball, Board* board);
 void BallMove(Ball* ball);
-void BallHit(Ball* ball, Brick* brick, char* mode);
+void BallHit(Ball* ball, Brick* brick, const char* mode);
 void BallDestroy(Ball* ball);
 
 void BrickCreate(Brick* brick, int x, int y, Element color);
@@ -277,7 +280,31 @@ void BrickDestroy(Brick* brick);
 void SocketReceive(SOCKET soc, char* buf);
 void SocketSend(SOCKET soc, const char* buf);
 
-static inline void recordf(const char* format, ...)__attribute__((__format__(printf, 1, 2)));
-static inline void errorf(const char* format, ...)__attribute__((__format__(printf, 1, 2)));
+__mingw_ovr
+__attribute__((__format__(printf, 1, 2))) __MINGW_ATTRIB_NONNULL(1)
+int recordf(const char* format, ...){    //向日志文件中记录信息
+  if (record){
+    int retval;
+    __builtin_va_list local_argv; __builtin_va_start(local_argv, format);
+    retval = __mingw_vfprintf(LogFile, format, local_argv);
+    __builtin_va_end(local_argv );
+    return retval;
+  }
+}
+
+__mingw_ovr
+__attribute__((__format__(printf, 1, 2))) __MINGW_ATTRIB_NONNULL(1)
+int errorf(const char* format, ...){   //在日志和标准误差流中记录错误
+  int retval_r, retval_e;
+  if (record) {
+    __builtin_va_list local_argv; __builtin_va_start(local_argv, format);
+    retval_r = __mingw_vfprintf(LogFile, format, local_argv);
+    __builtin_va_end(local_argv );
+  }
+  __builtin_va_list local_argv; __builtin_va_start(local_argv, format);
+  retval_e = __mingw_vfprintf(stderr, format, local_argv );
+  __builtin_va_end( local_argv );
+  return min(retval_e, retval_r);
+}
 
 #endif

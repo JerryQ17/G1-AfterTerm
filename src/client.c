@@ -20,7 +20,7 @@ void ClientCfgInit(void){
   cfg = fopen(CFG_PATH, "r");
   if (cfg != NULL) {
     //读取设置失败 不影响游戏运行 只需要报告错误
-    if (fscanf(cfg, "record=%d\nServerIP=%s\nServerPort=%hd", &record, ServerIP, &ServerPort) < CFG_ITEM){
+    if (fscanf(cfg, "record=%d\nServerIP=%15s\nServerPort=%hd", &record, ServerIP, &ServerPort) < CFG_ITEM){
       fprintf(stderr, "ClientCfgInit: Error occurred when loading configs, ");
       if (feof(cfg)) fprintf(stderr, "EOF\n");
       else if (ferror(cfg))  fprintf(stderr, "Read Error\n");
@@ -142,10 +142,11 @@ void ClientLoadResource(void){
 void ClientEventLoop(void){
   SDL_Event event;
   while (true){
+    //小球移动
+    if (state != MAIN && state != LOCAL_DEATH) BallMove(LocalBall);
+    if (state == TWO_PLAYER || state == LOCAL_DEATH) BallMove(NetBall);
+    //事件处理
     while (SDL_PollEvent(&event)) {
-      //小球移动
-      if (state != MAIN && state != LOCAL_DEATH) BallMove(LocalBall);
-      if (state == TWO_PLAYER || state == LOCAL_DEATH) BallMove(NetBall);
       switch (event.type) {
         case SDL_QUIT:                                                //关闭窗口
           recordf("ClientEventLoop: Quit by SDL_QUIT\n");
@@ -206,7 +207,7 @@ void ClientEventLoop(void){
               ClientGameQuit();
             }else if (!LocalBall->SetOff){
               //处理k和dir
-              if (event.button.x - ObjectMidX(LocalBall)) {
+              if (event.button.x != ObjectMidX(LocalBall)) {
                 LocalBall->k = -(event.button.y - ObjectMidY(LocalBall)) / (event.button.x - ObjectMidX(LocalBall));
                 LocalBall->dir = (LocalBall->k >= 0 ? RIGHT : LEFT);
               }else{
@@ -221,9 +222,9 @@ void ClientEventLoop(void){
           break;
         default:break;
       }
-      ClientRender();
-      if (state != MAIN) ClientGameChange();
     }
+    if (state != MAIN) ClientGameChange();
+    ClientRender();
   }
 }
 
@@ -277,19 +278,50 @@ void ClientGameInit(void){
   ClientPlayBGM();
 }
 
-void ClientGameChange(void){
-  for (int i = 0; i < BrickNum[difficulty]; i++){
-    if (BrickArr[i].life) return;
-  }
-  if (state == ONE_PLAYER){
-    BrickArrDestroy(BrickArr);
-    difficulty++;
-    if (difficulty > HARD) {
-      ClientGameQuit();
+void ClientGameChange(void){    //一个难度的砖块结束后，改变游戏状态
+  //检查条件是否满足
+  if (LocalBoard->life) {   //生命值不为0
+    for (int i = 0; i < BrickNum[difficulty]; i++) {
+      if (BrickArr[i].life) return;
     }
-    BrickArr = calloc(BrickNum[difficulty], sizeof(Brick));
-    BrickArrCreate(BrickArr);
+  }else{    //生命值为0，游戏结束
+    ClientDrawText("You Lose!", WL_X, WL_Y, true);
+    SDL_Delay(WL_DELAY);
+    ClientGameQuit();
+    return;
   }
+  //改变难度，判断游戏是否结束
+  difficulty++;
+  if (difficulty > HARD) {
+    ClientDrawText("You Win!", WL_X, WL_Y, true);
+    SDL_Delay(WL_DELAY);
+    ClientGameQuit();
+    return;
+  }
+  //摧毁对象
+  BrickArrDestroy(BrickArr);
+  BallDestroy(LocalBall);
+  BoardDestroy(LocalBoard);
+  BoardDestroy(NetBoard);
+  if (state != ONE_PLAYER){
+    BallDestroy(NetBall);
+  }
+  //重新为对象申请空间
+  LocalBoard = calloc(1, sizeof(Board));
+  NetBoard = calloc(1, sizeof(Board));
+  NetBoard->life = 0;
+  LocalBall = calloc(1, sizeof(Ball));
+  BrickArr = calloc(BrickNum[difficulty], sizeof(Brick));
+  //重新创建对象
+  BoardCreate(LocalBoard, RED);
+  BallCreate(LocalBall, LocalBoard);
+  if (state == ONE_PLAYER){
+    BrickArrCreate(BrickArr);
+  }else {
+    NetBall = calloc(1, sizeof(Ball));
+    //TODO
+  }
+  LocalBall->SetOff = false;
 }
 
 void ClientGameQuit(void){
@@ -383,15 +415,22 @@ void* ClientTransmissionThread(void* ThreadArgv){
     }else if (ARG == 1) {   //等待另一个客户端准备好
       pthread_mutex_lock(&GameWaitMutex);
       SocketSend(ServerSocket, "ClientReady");
-      SocketReceive(ServerSocket, Receive);
+      //SocketReceive(ServerSocket, Receive);
+      recv(ServerSocket, Receive, BUF_SIZE, 0);
+#ifdef DEBUG
+      puts(Receive);
+#endif
       //根据服务端的数据来对砖块初始化
-      char *ptr = strchr(Receive, ':');
-      for (int i = 0; i < BrickNum[difficulty]; i++){
-        int x = strtol(ptr + 1, &ptr, 10);
-        int y = strtol(ptr + 1, &ptr, 10);
-        Element color = strtol(ptr + 1, &ptr, 10);
-        BrickCreate(&BrickArr[i], x, y ,color);
+      char *brk_ptr = strchr(Receive, ':') + 1;
+      for (int i = 0; i < BrickNum[difficulty]; i++) {
+        int x = strtol(brk_ptr, &brk_ptr, 10);
+        int y = strtol(brk_ptr, &brk_ptr, 10);
+        Element color = strtol(brk_ptr, &brk_ptr, 10);
+        BrickCreate(&BrickArr[i], x, y, color);
       }
+#ifdef DEBUG
+      puts(Receive);
+#endif
       BrickPre = true;
       pthread_cond_signal(&GameWaitCond);
       pthread_mutex_unlock(&GameWaitMutex);
@@ -643,7 +682,7 @@ void BallMove(Ball* const ball){            //小球移动
   ball->DestRect.y += (float)(ball->dir * dy);
 }
 
-void BallHit(Ball* ball, Brick* brick, char* mode){   //小球与对象的碰撞
+void BallHit(Ball* ball, Brick* brick, const char* mode){   //小球与对象的碰撞
   if (!strcmp(mode, "bu") || !strcmp(mode, "bd")){    //砖块上方或下方
     ball->k = -ball->k;
     ball->score++;
@@ -672,7 +711,7 @@ void BallHit(Ball* ball, Brick* brick, char* mode){   //小球与对象的碰撞
     ball->board->alpha = (uint8_t)((double)(ball->board->life) / BoardLifeVec[difficulty] * UINT8_MAX);
     ball->board->DestRect.x = state == ONE_PLAYER ?
                               (WIN_WIDTH - ball->board->SourceRect.w) / 2 :
-                              WIN_WIDTH * (GameCondition.LocalNum == RED ? 3 : 1) / 4 - ball->board->SourceRect.w / 2;
+                              WIN_WIDTH * (GameCondition.LocalNum == RED ? 1 : 3) / 4 - ball->board->SourceRect.w / 2;
     ball->board->DestRect.y = BOARD_INIT_Y;
     if (state != ONE_PLAYER) {
       pthread_mutex_unlock(&BoardMoveMutex);
@@ -704,6 +743,8 @@ void BrickCreate(Brick* const brick, const int x, const int y, const Element col
   brick->element = color;
   brick->alpha = UINT8_MAX;
   brick->sur = IMG_Load(BrickPathVec[color]);
+  printf("\n");
+  puts(SDL_GetError());
   brick->tex = SDL_CreateTextureFromSurface(Renderer, brick->sur);
   brick->DestRect.x = x;
   brick->DestRect.y = y;
@@ -830,29 +871,4 @@ void SocketSend(SOCKET soc, const char* buf){
 #ifdef DEBUG
   printf("SocketSend: send success(len = %d)\nSendMessage: %s\n", len, SendBuf);
 #endif
-}
-
-static inline void recordf(const char* format, ...){    //向日志文件中记录信息
-  if (record){
-    va_list ap;
-    va_start(ap, format);
-    vfprintf(LogFile, format, ap);
-    va_end(ap);
-    fflush(LogFile);
-  }
-}
-
-static inline void errorf(const char* format, ...){   //在日志和标准误差流中记录错误
-  if (record) {
-    va_list rp;
-    va_start(rp, format);
-    vfprintf(LogFile, format, rp);
-    va_end(rp);
-    fflush(LogFile);
-  }
-  va_list ap;
-  va_start(ap, format);
-  vfprintf(stderr, format, ap);
-  va_end(ap);
-  fflush(stderr);
 }
