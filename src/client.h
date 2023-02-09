@@ -211,10 +211,6 @@ static Board* NetBoard;
 static Ball*  LocalBall;
 static Ball*  NetBall;
 
-int           record = 0;
-FILE*         LogFile;
-static FILE*  cfg;
-
 static SDL_Window*    Window    = NULL;               //窗口
 static SDL_Renderer*  Renderer  = NULL;               //渲染器
 

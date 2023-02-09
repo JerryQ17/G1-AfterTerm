@@ -52,10 +52,6 @@ static int ThreadArg[2] = {0, 1};
 static pthread_mutex_t GameInitMutex, TransmissionMutex[2];
 static pthread_cond_t GameInitCond, TransmissionCond[2];
 
-int           record = 0;
-FILE*         LogFile;
-static FILE*  cfg;
-
 static const int BrickNum[] = {30, 60, 90};
 static char BrickOrder[BUF_SIZE] = {0};
 

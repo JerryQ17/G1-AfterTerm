@@ -9,16 +9,16 @@
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif  //min
 
-extern int    record;
-extern FILE*  LogFile;
+int   RecordFlag = 0;
+FILE* LogFilePtr;
 
 __mingw_ovr
 __attribute__((__format__(printf, 1, 2))) __MINGW_ATTRIB_NONNULL(1)
 int recordf(const char* format, ...){   //向日志文件中记录信息
-  if (record) {
+  if (RecordFlag) {
     int retval;
     __builtin_va_list local_argv; __builtin_va_start(local_argv, format);
-    retval = __mingw_vfprintf(LogFile, format, local_argv);
+    retval = __mingw_vfprintf(LogFilePtr, format, local_argv);
     __builtin_va_end(local_argv);
     return retval;
   }
@@ -31,9 +31,9 @@ int errorf(const char* format, ...){    //在日志和标准误差流中记录�
   __builtin_va_list local_argv_e; __builtin_va_start(local_argv_e, format);
   retval_e = __mingw_vfprintf(stderr, format, local_argv_e);
   __builtin_va_end(local_argv_e);
-  if (record) {
+  if (RecordFlag) {
     __builtin_va_list local_argv_r; __builtin_va_start(local_argv_r, format);
-    retval_r = __mingw_vfprintf(LogFile, format, local_argv_r);
+    retval_r = __mingw_vfprintf(LogFilePtr, format, local_argv_r);
     __builtin_va_end(local_argv_r);
     return min(retval_e, retval_r);
   }

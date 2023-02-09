@@ -20,9 +20,9 @@ int main(){
 void ServerInit(void){
   srand((UINT)time(NULL));
   //读取设置文件
-  cfg = fopen(CFG_PATH, "r");
+  FILE* cfg = fopen(CFG_PATH, "r");
   if (cfg != NULL) {
-    if (fscanf(cfg, "record=%d", &record) < CFG_ITEM){   //读取设置失败 不影响游戏运行 只需要报告错误
+    if (fscanf(cfg, "RecordFlag=%d", &RecordFlag) < CFG_ITEM){   //读取设置失败 不影响游戏运行 只需要报告错误
       fprintf(stderr, "ServerInit: Error occurred when loading configs, ");
       if (feof(cfg)) fprintf(stderr, "EOF\n");
       else if (ferror(cfg))  fprintf(stderr, "Read Error\n");
@@ -30,21 +30,21 @@ void ServerInit(void){
     }
     fclose(cfg);
   }else errorf("ServerInit: Fail to find cfg.txt\n");
-  if (record){    //根据设置文件 以及日志文件是否能正常写入 来决定是否记录信息
-    LogFile = fopen(LOG_PATH, "a+");
-    if (LogFile == NULL) {   //日志文件不能正常写入 不记录信息
-      record = 0;
+  if (RecordFlag){    //根据设置文件 以及日志文件是否能正常写入 来决定是否记录信息
+    LogFilePtr = fopen(LOG_PATH, "a+");
+    if (LogFilePtr == NULL) {   //日志文件不能正常写入 不记录信息
+      RecordFlag = 0;
       errorf("Failed to open cfg/slog.txt\n");
     }else{
       time_t cur_time = time(NULL);
-      recordf("ServerInit: Program start at %srecord = %d\n", ctime(&cur_time), record);
+      recordf("ServerInit: Program start at %srecord = %d\n", ctime(&cur_time), RecordFlag);
     }
   }
   //服务器初始化
   int init_value = WSAStartup(MAKEWORD(2, 2), &data);
   if (init_value){
     errorf("ServerInit: WSAStartup Failed, code %d!\n", init_value);
-    if (record){
+    if (RecordFlag){
       time_t cur_time = time(NULL);
       recordf("ServerInit: Program quit with code %d at %s\n", init_value, ctime(&cur_time));
     }
@@ -82,7 +82,7 @@ void ServerQuit(const int code){
   pthread_cond_destroy(&GameInitCond);
   pthread_mutex_destroy(&GameInitMutex);
   WSACleanup();
-  if (record){
+  if (RecordFlag){
     time_t cur_time = time(NULL);
     recordf("ServerQuit: Program quit with code %d at %s\n", code, ctime(&cur_time));
   }

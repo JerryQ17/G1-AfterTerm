@@ -19,10 +19,10 @@ int SDL_main(int argc, char* argv[]){
 
 void ClientCfgInit(void){
   //读取设置文件
-  cfg = fopen(CFG_PATH, "r");
+  FILE* cfg = fopen(CFG_PATH, "r");
   if (cfg != NULL) {
     //读取设置失败 不影响游戏运行 只需要报告错误
-    if (fscanf(cfg, "record=%d\nServerIP=%15s\nServerPort=%hd", &record, ServerIP, &ServerPort) < CFG_ITEM){
+    if (fscanf(cfg, "RecordFlag=%d\nServerIP=%15s\nServerPort=%hd", &RecordFlag, ServerIP, &ServerPort) < CFG_ITEM){
       fprintf(stderr, "ClientCfgInit: Error occurred when loading configs, ");
       if (feof(cfg)) fprintf(stderr, "EOF\n");
       else if (ferror(cfg))  fprintf(stderr, "Read Error\n");
@@ -30,14 +30,14 @@ void ClientCfgInit(void){
     }
     fclose(cfg);
   }else errorf("ClientCfgInit: Fail to find cfg.txt\n");
-  if (record){    //根据设置文件 以及日志文件是否能正常写入 来决定是否记录信息
-    LogFile = fopen(LOG_PATH, "a+");
-    if (LogFile == NULL) {   //日志文件不能正常写入 不记录信息
-      record = 0;
+  if (RecordFlag){    //根据设置文件 以及日志文件是否能正常写入 来决定是否记录信息
+    LogFilePtr = fopen(LOG_PATH, "a+");
+    if (LogFilePtr == NULL) {   //日志文件不能正常写入 不记录信息
+      RecordFlag = 0;
       errorf("Failed to open cfg/slog.txt\n");
     }else{
       time_t cur_time = time(NULL);
-      recordf("ClientCfgInit: Program start at %srecord = %d\n", ctime(&cur_time), record);
+      recordf("ClientCfgInit: Program start at %sRecordFlag = %d\n", ctime(&cur_time), RecordFlag);
     }
   }
   memset(&GameCondition, 0, sizeof(GameCondition));
