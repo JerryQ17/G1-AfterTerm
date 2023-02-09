@@ -95,56 +95,77 @@ void* ServerTransmissionThread(void* ThreadArgv){
   char SendBuf[BUF_SIZE] = {0}, RecBuf[BUF_SIZE] = {0};
   while (true) {
     SocketReceive(ClientSocket[ARG], RecBuf);
+    if (PlayerQuit){
+      SocketSend(ClientSocket[ARG], "quit");
+      ServerQuit(EXIT_SUCCESS);
+    }
+    /*ServerDataResolve(RecBuf, ARG, SERVER_TO_CLIENT);*/
     if (!strcmp(RecBuf, "ConnectRequest")) {
-      sprintf(SendBuf, "Client%d", ARG);
+      sprintf(SendBuf, "%d", ARG);
       SocketSend(ClientSocket[ARG], SendBuf);
-    }else if (!strcmp(RecBuf, "ClientReady")){
-      SocketSend(ClientSocket[ARG], BrickOrder);
+    }else if (!strcmp(RecBuf, "ClientReady")) {
       pthread_mutex_lock(&GameInitMutex);
       if (ARG) pthread_cond_signal(&GameInitCond);
       else pthread_cond_wait(&GameInitCond, &GameInitMutex);
+      sprintf(SendBuf, "GameStart%d", 0);
+      SocketSend(ClientSocket[ARG], SendBuf);
       pthread_mutex_unlock(&GameInitMutex);
+    }else if (!strcmp(RecBuf, "BrickOrder")) {
+      SocketSend(ClientSocket[ARG], BrickOrder);
     }else if (!strcmp(RecBuf, "quit")) {
-      ServerDataResolve(RecBuf, ARG, NET_TO_HOST);
+      ServerDataResolve(RecBuf, ARG, SERVER_TO_CLIENT);
       break;
     }else{
-      ServerDataResolve(RecBuf, ARG, NET_TO_HOST);
+      ServerDataResolve(RecBuf, ARG, SERVER_TO_CLIENT);
     }
+    /*ServerDataResolve(SendBuf, ARG, CLIENT_TO_SERVER);
+    SocketSend(ClientSocket[ARG], SendBuf);*/
     memset(SendBuf, 0, BUF_SIZE);
     memset(RecBuf, 0, BUF_SIZE);
   }
 }
 
-char* ServerDataResolve(char* buf, int ThreadNum, bool flag){    //服务端数据解析
-  static char rev[BUF_SIZE] = {0};
-  memset(rev, 0, BUF_SIZE);
-  if (flag == NET_TO_HOST) {
+void ServerDataResolve(char* buf, int ThreadNum, bool flag){    //服务端数据解析
+  if (flag == SERVER_TO_CLIENT) {
     if (!strcmp(buf, "quit")) {
       closesocket(ClientSocket[ThreadNum]);
       if (ClientNumber) {
         ClientNumber = 0;
+        PlayerQuit = true;
         pthread_exit(NULL);
       }else ServerQuit(EXIT_SUCCESS);
     }else{
       pthread_mutex_lock(&TransmissionMutex[ThreadNum]);
-      sscanf(buf, "Client%*d,LocalBall(%f,%f),LocalBoard(%d,%d)",
-                      &BallX[ThreadNum], &BallY[ThreadNum], &BoardX[ThreadNum], &BoardY[ThreadNum]);
+      char* ptr = buf;
+      if (strtol(ptr, &ptr, 10) == ThreadNum){
+        BoardX[ThreadNum] = strtol(ptr, &ptr, 10);
+        BoardY[ThreadNum] = strtol(ptr, &ptr, 10);
+        BallX[ThreadNum] = strtof(ptr, &ptr);
+        BallY[ThreadNum] = strtof(ptr, &ptr);
+        for (int i = 0; i < BrickNum[difficulty]; i++){
+          BrickLife[i] = strtol(ptr, &ptr, 10);
+        }
+      }else{
+        errorf("Wrong ClientNum\n");
+        //TODO
+      }
       pthread_mutex_unlock(&TransmissionMutex[ThreadNum]);
-      pthread_mutex_lock(&TransmissionMutex[!ThreadNum]);
-      sprintf(rev, "Client%d,NetBall(%f,%f),NetBoard(%d,%d)",
-              !ThreadNum, BallX[!ThreadNum], BallY[!ThreadNum], BoardX[!ThreadNum], BoardY[!ThreadNum]);
-      SocketSend(ClientSocket[ThreadNum], rev);
-      pthread_mutex_unlock(&TransmissionMutex[!ThreadNum]);
-      return rev;
     }
-  }else if (flag == HOST_TO_NET){
-    //TODO
+  }else if (flag == CLIENT_TO_SERVER) {
+    pthread_mutex_lock(&TransmissionMutex[!ThreadNum]);
+    sprintf(buf, "%d %d %d %f %f ", !ThreadNum,
+            BoardX[!ThreadNum], BoardY[!ThreadNum], BallX[!ThreadNum], BallY[!ThreadNum]);
+    for (int i = 0; i < BrickNum[difficulty]; i++){
+      char temp[3] = {(char)(BrickLife[i] + 48), ' '};
+      strcat(buf, temp);
+    }
+    pthread_mutex_unlock(&TransmissionMutex[!ThreadNum]);
   }
 }
 
 void BrickArrCreate(char* ret, int diff){
+  memset(ret, 0, BUF_SIZE);
   bool choice[16][12] = {0};
-  strcpy(ret, "BrickInitialize:");
   for (int i = 0; i < BrickNum[diff]; i++){
     char add[BUF_SIZE] = {0};
     int x = rand() % 15, y = rand() % 12, c = rand() % 5;
@@ -208,122 +229,14 @@ void SocketAccept(const SOCKET* ser, SOCKET* cli, struct sockaddr_in* cli_addr){
 #endif
 }
 
-void SocketReceive(SOCKET soc, char* buf){
-  char temp[BUF_SIZE] = {0};
-  int r, len = -1, len_temp, rf = 0, step = 0;
-  while (true){
-    r = recv(soc, temp, BUF_SIZE, 0);
-    step++;
-    if (step > RECEIVE_STEP){
-      errorf("SocketReceive: receive failed, over step\n");
-      ServerQuit(RECEIVE_FAILURE);
-    }
-    if (r == SOCKET_ERROR){
-      errorf("SocketReceive: receive failed, return %d, code %d\n", r, WSAGetLastError());
-      continue;
-    }else if (rf == 0 || rf == 1) {
-      int sr = sscanf(temp, "%d%s", &len_temp, temp);
-      if (rf == 0 && sr == 1){
-        rf = 1;
-        len = len_temp;
-      }else if (rf == 0 && sr == 2){
-        rf = 2;
-        len = len_temp;
-        strcpy(buf, temp);
-      }else if (rf == 1){
-        int i = 1;
-        for (; i <= MES_MAX_LEN; i++){
-          len_temp /= 10;
-          if (len_temp == 0) break;
-        }
-        len *= (int)pow(10, i);
-        len += len_temp;
-        if(sr == 2){
-          rf = 2;
-          strcpy(buf, temp);
-        }
-      }
-    }else strcat(buf, temp);
-    if (len == strlen(buf)) break;
-  }
-  recordf("SocketReceive: receive success(len = %d)\n", len);
-#ifdef DEBUG
-  printf("SocketReceive: receive success(len = %d)\n", len);
-  printf("ReceiveMessage: %s\n", buf);
-#endif
+void SocketReceive(SOCKET soc, char* buf){    //从soc接受buf
+  recv(soc, buf, BUF_SIZE, 0);
+  recordf("SocketReceive: soc = %llu\nReceiveMessage(%llu):\n%s\n", soc, strlen(buf), buf);
+  Debug("ReceiveMessage(%llu):\n%s\n", strlen(buf), buf);
 }
 
-void SocketSend(SOCKET soc, const char* buf){
-  char SendBuf[BUF_SIZE] = {0};
-  strcpy(SendBuf, buf);
-  int len = (int)strlen(SendBuf), len_temp = len, i = 1, step = 0, num[MES_MAX_LEN] = {0};
-  for (; i <= MES_MAX_LEN; i++){
-    num[i - 1] = len_temp / 10;
-    len_temp /= 10;
-    if (len_temp == 0) break;
-  }
-  len_temp = len;
-  for (int j = 0; j < i; j++){
-    int k = (int)pow(10, i - j - 1);
-    num[j] = len_temp / k;
-    len_temp %= k;
-  }
-  memmove(SendBuf + i, SendBuf, len + 1);
-  for (int j = 0; j < i; j++) {
-    *(SendBuf + j) = (char) (num[j] + 48);
-  }
-  //发送buf给soc
-  len = (int)strlen(SendBuf);
-  int s = send(soc, SendBuf, len + 1, 0), d = len - s;
-  if (s == SOCKET_ERROR){
-    errorf("SocketSend: send failed, return %d, code %d\n", s, WSAGetLastError());
-    d = len;
-  }
-  //如果没有发送完就发送剩下的
-  while (d > 0){
-    if (step > SEND_STEP){
-      errorf("SocketSend: send failed, over step\n");
-      ServerQuit(SEND_FAILURE);
-    }
-    char temp[BUF_SIZE] = {0};
-    for (int j = 0; j < d; j++){
-      temp[j] = SendBuf[len - d + j];
-    }
-    s = send(soc, temp, (int)strlen(temp) + 1, 0);
-    if (s == SOCKET_ERROR){
-      errorf("SocketSend: send failed, return %d, code %d\n", s, WSAGetLastError());
-      continue;
-    }
-    d -= s;
-    step++;
-  }
-  recordf("SocketSend: send success(len = %d)\n", len);
-#ifdef DEBUG
-  printf("SocketSend: send success(len = %d)\nSendMessage: %s\n", len, SendBuf);
-#endif
-}
-
-static inline void recordf(const char* format, ...){    //向日志文件中记录信息
-  if (record){
-    va_list ap;
-    va_start(ap, format);
-    vfprintf(LogFile, format, ap);
-    va_end(ap);
-    fflush(LogFile);
-  }
-}
-
-static inline void errorf(const char* format, ...){   //在日志和标准误差流中记录错误
-  if (record) {
-    va_list rp;
-    va_start(rp, format);
-    vfprintf(LogFile, format, rp);
-    va_end(rp);
-    fflush(LogFile);
-  }
-  va_list ap;
-  va_start(ap, format);
-  vfprintf(stderr, format, ap);
-  va_end(ap);
-  fflush(stderr);
+void SocketSend(SOCKET soc, const char* buf){   //发送buf给soc
+  send(soc, buf, (int)(strlen(buf)) + 1, 0);
+  recordf("SocketSend: soc = %llu\nSendMessage(%llu):\n%s\n", soc, strlen(buf), buf);
+  Debug("SendMessage(%llu):\n%s\n", strlen(buf), buf);
 }
