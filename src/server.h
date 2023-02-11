@@ -19,6 +19,8 @@
 
 //宏定义
 
+#define BUF_SIZE 1000
+
 #define IP_FAILURE      1
 #define SOCKET_FAILURE  2
 #define BIND_FAILURE    3
@@ -31,38 +33,43 @@
 #define CFG_PATH "cfg/cfg.txt"
 #define LOG_PATH "cfg/slog.txt"
 
-#define BUF_SIZE 1000
-
 #define ARG (*(int*)ThreadArgv)
 
 //变量定义
 
-static WSADATA data;
-static char ServerIP[17] = {0};
-static int ClientNumber = 0;
-static SOCKET ServerSocket, ClientSocket[2];
-static struct sockaddr_in ServerAddr, ClientAddr[2];
-static int mod = 0;
-static int difficulty = 0;
-static float BallX[2] = {0}, BallY[2] = {0};
-static int BoardX[2] = {0}, BoardY[2] = {0}, BoardLife[2] = {0};
-static int BrickLife[90] = {0};
-static volatile bool PlayerQuit = false;
+static WSADATA          data;
+static char             ServerIP[17] = {0};
+static SOCKET           ServerSocket;
+static SOCKET           ClientSocket[2];
+static SOCKADDR_IN      ServerAddr;
+static SOCKADDR_IN      ClientAddr[2];
+static int              ClientNumber = 0;
+static int              mod = 0;
+static int              difficulty = 0;
+static int              BoardX[2] = {0};
+static int              BoardY[2] = {0};
+static int              BoardLife[2] = {0};
+static int              BrickLife[90] = {0};
+static const int        BrickNum[] = {30, 60, 90};
+static char             BrickOrder[BUF_SIZE] = {0};
+static float            BallX[2] = {0};
+static float            BallY[2] = {0};
+static volatile bool    PlayerQuit = false;
 
-static pthread_t ClientThread[2];
-static int ThreadArg[2] = {0, 1};
-static pthread_mutex_t GameInitMutex, TransmissionMutex[2];
-static pthread_cond_t GameInitCond, TransmissionCond[2];
-
-static const int BrickNum[] = {30, 60, 90};
-static char BrickOrder[BUF_SIZE] = {0};
+static pthread_t        ClientThread[2];
+static int              ThreadArg[2] = {0, 1};
+static pthread_mutex_t  GameInitMutex;
+static pthread_mutex_t  TransmissionMutex[2];
+static pthread_cond_t   GameInitCond;
+static pthread_cond_t   TransmissionCond[2];
 
 //函数声明
 
 void  ServerInit(void);
 void  ServerIP_LAN(char *ip);
 void  ServerQuit(int code);
-_Noreturn void* ServerTransmissionThread(void* ThreadArgv);
+_Noreturn
+void* ServerTransmissionThread(void* ThreadArgv);
 void  ServerDataResolve(char* buf, int ThreadNum, bool flag);
 
 void  BrickArrCreate(char* ret, int diff);
