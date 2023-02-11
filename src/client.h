@@ -234,14 +234,16 @@ static SDL_Rect     FontRect;
 static SDL_Color    FontColor   = {0x88, 0x0a, 0x39, 0xff};
 
 static Mix_Music*   bgm;                              //BGM
-//static Mix_Chunk*   sound;                            //音效
-static const int    BgmVolumeVec[]  = {100, 45, 60, 80};
+static Mix_Chunk*   sound;                            //音效
+static const int    BgmVolumeVec[]  = {100, 45, 60, 80, 70};
 static const char*  BgmPathVec[]    = { "msc/George Duke-It's On.mp3",
                                         "msc/Tennis-I'm Callin'.mp3",
                                         "msc/Nieve-WriteThisDown.mp3",
                                         "msc/Swollen Members-Fuel Injected.mp3",
                                         "msc/Lakey-Inspired-The-Process.mp3"};
-//static const char*  SoundPathVec[]  = {};
+static const char*  SoundPathVec[]  = { "msc/thunder.mp3",
+                                        "msc/bomb.mp3",
+                                        "msc/death.mp3"};
 
 //函数声明
 
@@ -259,6 +261,7 @@ void* ClientTransmissionThread(void* ThreadArgv);
 void  ClientDataResolve(char* buf, bool flag);
 void  ClientRender(void);
 void  ClientPlayBGM(void);
+void  ClientPlaySound(int num);
 void  ClientDrawText(const char* text, int x, int y, bool pre);
 
 void  BoardCreate(Board* board, bool color);

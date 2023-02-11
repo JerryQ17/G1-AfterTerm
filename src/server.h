@@ -29,7 +29,7 @@
 #define CLIENT_TO_SERVER true
 #define SERVER_TO_CLIENT false
 
-#define CFG_ITEM 1
+#define CFG_ITEM 2
 #define CFG_PATH "cfg/cfg.txt"
 #define LOG_PATH "cfg/slog.txt"
 

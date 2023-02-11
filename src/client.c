@@ -592,6 +592,11 @@ void ClientPlayBGM(void){
   Mix_PlayMusic(bgm, -1);
 }
 
+void ClientPlaySound(int num){
+  sound = Mix_LoadWAV(SoundPathVec[num]);
+  Mix_PlayChannel(-1, sound, 0);
+}
+
 void ClientDrawText(const char *text, int x, int y, bool pre){   //根据参数渲染文本
   FontSurface = TTF_RenderUTF8_Blended(Font, text, FontColor);
   FontTexture = SDL_CreateTextureFromSurface(Renderer, FontSurface);
@@ -726,14 +731,14 @@ void BallMove(Ball* const ball){            //小球移动
   }
   //碰撞检查
   if (flag) {
-    if (ObjectMaxY(ball) >= WIN_HEIGHT) {                      //如果小球碰到屏幕底端，生命值-1，并重置小球和弹板的位置
+    if (ObjectMaxY(ball) >= WIN_HEIGHT) {                       //如果小球碰到屏幕底端，生命值-1，并重置小球和弹板的位置
       BallHit(ball, NULL, "sd");
     } else if (ObjectMinX(ball) <= 0) {                         //如果小球碰到屏幕左端，反弹
       BallHit(ball, NULL, "sl");
     } else if (ObjectMaxX(ball) >= WIN_WIDTH) {                 //如果小球碰到屏幕右端，反弹
       BallHit(ball, NULL, "sr");
     } else if (ObjectMinY(ball) <= 0 ||
-    (ObjectMaxY(ball) >= (float)ball->board->DestRect.y &&
+    (ObjectMaxY(ball) >= (float) ObjectMinY(ball->board) &&
     ObjectMinX(ball) >= (float)ObjectMinX(ball->board) &&
     ObjectMaxX(ball) <= ObjectMaxX((ball->board)))) {
       BallHit(ball, NULL, "su");                    //如果小球碰到屏幕顶端或自己的挡板顶端，反弹
@@ -759,8 +764,6 @@ void BallHit(Ball* ball, Brick* brick, const char* mode){   //小球与对象的
     ball->hit++;
     ball->k = -ball->k;
     ball->score++;
-    ball->element = brick->element;
-    ball->sur = IMG_Load(BallPathVec[ball->element]);
     brick->life--;
     brick->alpha = (uint8_t)((double)(brick->life) / BrickLifeVec[difficulty] * UINT8_MAX);
   }else if (!strcmp(mode, "bl")){                     //砖块左侧
@@ -782,6 +785,7 @@ void BallHit(Ball* ball, Brick* brick, const char* mode){   //小球与对象的
   }else if (!strcmp(mode, "su")){                       //屏幕上方
     ball->k = -ball->k;
   }else if (!strcmp(mode, "sd")){                       //屏幕下方
+    ClientPlaySound(2);
     //先修改挡板的属性
     if (state != ONE_PLAYER) {
       pthread_mutex_lock(&BoardMoveMutex);
@@ -800,6 +804,7 @@ void BallHit(Ball* ball, Brick* brick, const char* mode){   //小球与对象的
     ball->SetOff = false;
     ball->dir = VERTICAL;
     ball->k = BallInitialK;
+    ball->element = EMPTY;
     ball->DestRect.x = (float)ball->board->DestRect.x + (float)(ball->board->DestRect.w - ball->sur->w) / 2;
     ball->DestRect.y = (float)ball->board->DestRect.y - (float)ball->sur->h;
   }else if (!strcmp(mode, "sl")){                       //屏幕左侧
@@ -876,6 +881,7 @@ void ElementReact(Ball* ball, Brick* brick) {
         BrickArr[i].life--;
       }
     }
+    ClientPlaySound(1);
   }else if ((BallElement == WATER || BallElement == ICE) && BrickElement == THUNDER) {
     /*水元素小球或冰元素小球撞击雷元素砖块会引发链式反应，导致相邻的水元素砖块全部受到一次攻击*/
     for (int i = 0; i < BrickNum[difficulty]; i++) {
@@ -886,6 +892,7 @@ void ElementReact(Ball* ball, Brick* brick) {
         BrickArr[i].life--;
       }
     }
+    ClientPlaySound(0);
   }else if (BallElement == EMPTY && BrickElement != EMPTY) {
     /*无元素小球撞击相应元素砖块会附着上相应元素*/
     ball->element = brick->element;
