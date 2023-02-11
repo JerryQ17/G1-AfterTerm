@@ -60,15 +60,16 @@ int recordf(const char *format, ...) {
 /**
  * @name errorf
  * @category 宏
- * @param ... 格式串和可变数量的数据项
+ * @param format 格式串
+ * @param argv 可变数量的数据项
  * @details 在日志和标准误差流中记录错误
  * @sa recordf
  */
 #ifndef errorf
-#define errorf(...)             \
-do {                            \
-  recordf(__VA_ARGS__);         \
-  fprintf(stderr, __VA_ARGS__); \
+#define errorf(format, argv...)     \
+do {                                \
+  recordf(format, ##argv);          \
+  fprintf(stderr, format, ##argv);  \
 }while (0)
 #endif //errorf
 
