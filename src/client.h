@@ -86,6 +86,7 @@
 #define TTF_INIT_ERROR          7
 #define TTF_OPEN_FONT_ERROR     8
 #define MIX_OPEN_AUDIO_ERROR    9
+#define NUM_ERROR               10
 
 #define ARG         (*(int*)ThreadArgv)
 #define state       GameCondition.GameState

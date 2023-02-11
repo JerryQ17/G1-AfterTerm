@@ -526,7 +526,7 @@ void ClientDataResolve(char* buf, bool flag){    //客户端数据解析
       }
     }else{
       errorf("Wrong NetNum\n");
-      //TODO
+      ClientQuit(NUM_ERROR);
     }
   }
   //解锁GameChangeMutex
@@ -599,7 +599,7 @@ void ClientDrawText(const char *text, int x, int y, bool pre){   //根据参数�
   SDL_RenderCopy(Renderer, FontTexture, NULL, &FontRect);
   if (pre) SDL_RenderPresent(Renderer);
   //末处理
-  //SDL_FreeSurface(FontSurface);
+  SDL_FreeSurface(FontSurface);
   SDL_DestroyTexture(FontTexture);
 }
 
