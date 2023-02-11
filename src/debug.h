@@ -55,6 +55,7 @@ int recordf(const char *format, ...) {
     __builtin_va_end(local_argv);
     return retval;
   }
+  return 0;
 }
 
 /**
@@ -89,9 +90,11 @@ int debugf_b(const char *format, ...) {
   int retval;
   __builtin_va_list local_argv;
   __builtin_va_start(local_argv, format);
-  __mingw_vfprintf(stdout, format, local_argv);
+  retval = __mingw_vfprintf(stdout, format, local_argv);
   __builtin_va_end(local_argv);
   return retval;
+#else
+  return 0;
 #endif  //MY_DEBUG_FLAG__NJU_SE_2022__
 }
 
@@ -120,6 +123,8 @@ int debugf_d(const int line, const char *func, const char *file, const char *for
   __builtin_va_end(local_argv);
   printf("\n");
   return retval;
+#else
+  return 0;
 #endif  //MY_DEBUG_FLAG__NJU_SE_2022__
 }
 
