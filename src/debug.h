@@ -41,7 +41,7 @@ FILE *LogFilePtr = NULL;
  * @category 函数
  * @param format 格式串
  * @param ... 可变数量的数据项
- * @return 和printf一样
+ * @return 如果成功，则返回写入的字符总数，否则返回一个负数
  * @details 在日志文件(LogFilePtr)中记录信息
  */
 
@@ -78,8 +78,8 @@ do {                                \
  * @category 函数
  * @param format 格式串
  * @param ... 可变数量的数据项
- * @return 和printf一样
- * @details 简略的调试(brief)
+ * @return 如果成功，则返回写入的字符总数，否则返回一个负数。
+ * @details 简略的调试函数(brief)
  */
 
 __mingw_ovr
@@ -105,8 +105,8 @@ int debugf_b(const char *format, ...) {
  * @param file  文件名
  * @param format 格式串
  * @param ... 可变数量的数据项
- * @return 和printf一样
- * @details 详细的调试(detailed)，格式串末尾不需要回车，最后自动输出一个回车
+ * @return 如果成功，则返回写入的字符总数，否则返回一个负数
+ * @details 详细的调试函数(detailed)，格式串末尾不需要回车，最后自动输出一个回车
  * @sa debugf
  */
 
@@ -132,8 +132,8 @@ int debugf_d(const int line, const char *func, const char *file, const char *for
  * @category 宏
  * @param format 格式串
  * @param argv 可变数量的数据项
+ * @return 如果成功，则返回写入的字符总数，否则返回一个负数
  * @details 使用debugf_d函数的简便方式
- * @example debugf("C4:%d", 7355608);
  * @sa debugf_d
  */
 
@@ -184,6 +184,7 @@ size_t formatTime(char* buf, size_t BufSize, const char* format){
  * @name FormatTime
  * @category 宏
  * @param buf 指向目标数组的指针，用来复制产生的字符串
+ * @return 如果产生的字符串小于BufSize个字符（包括空结束字符），则会返回复制到buf中的字符总数（不包括空结束字符），否则返回零
  * @details 使用formatTime函数的简便方式
  * @sa formatTime
  */
