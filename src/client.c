@@ -38,9 +38,10 @@ void ClientCfgInit(void){
       RecordFlag = 0;
       errorf("Failed to open cfg/slog.txt\n");
     }else{
-      time_t cur_time = time(NULL);
-      recordf("ClientCfgInit: Program start at %sRecordFlag = %d\tmod = %d\n",
-              ctime(&cur_time), RecordFlag, mod);
+      char TimeStr[BUF_SIZE] = {0};
+      FormatTime(TimeStr);
+      recordf("ClientCfgInit: Program start at %s\nRecordFlag = %d\tmod = %d\n",
+              TimeStr, RecordFlag, mod);
     }
   }
   memset(&GameCondition, 0, sizeof(GameCondition));
@@ -52,8 +53,9 @@ void ClientLibInit(void){
   int wv = WSAStartup(MAKEWORD(2, 2), &data);
   if (wv){
     errorf("ClientLibInit: WSAStartup Failed, code %d\n", wv);
-    time_t cur_time = time(NULL);
-    recordf("ClientLibInit: Program quit with code %d at %s\n", wv, ctime(&cur_time));
+    char TimeStr[BUF_SIZE] = {0};
+    FormatTime(TimeStr);
+    recordf("ClientLibInit: Program quit with code %d at %s\n", wv, TimeStr);
     exit(wv);
   }
   //客户端SDL初始化
@@ -390,8 +392,9 @@ void ClientQuit(int code){
   SDL_Quit();
   //WSA
   WSACleanup();
-  time_t cur_time = time(NULL);
-  recordf("ClientQuit: Program quit with code %d at %s\n", code, ctime(&cur_time));
+  char TimeStr[BUF_SIZE] = {0};
+  FormatTime(TimeStr);
+  recordf("ClientQuit: Program quit with code %d at %s\n", code, TimeStr);
   exit(code);
 }
 

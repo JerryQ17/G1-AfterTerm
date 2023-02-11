@@ -1,13 +1,14 @@
 /**
  * @file debug.h
  * @author JerryQ
- * @details 调试程序时，用来记录信息的函数和宏\n
+ * @details 调试程序时，用来记录信息的函数和宏（还有一些杂项）\n
  * 将第12行代码注释掉即可关闭调试功能
  * */
 #ifndef MY_DEBUG_HEADER__NJU_SE_2022__
 #define MY_DEBUG_HEADER__NJU_SE_2022__
 
 #include <stdio.h>
+#include <time.h>
 
 #define MY_DEBUG_FLAG__NJU_SE_2022__
 
@@ -66,13 +67,11 @@ int recordf(const char *format, ...) {
  * @details 在日志和标准误差流中记录错误
  * @sa recordf
  */
-#ifndef errorf
 #define errorf(format, argv...)     \
 do {                                \
   recordf(format, ##argv);          \
   fprintf(stderr, format, ##argv);  \
 }while (0)
-#endif //errorf
 
 /**
  * @name debugf_b
@@ -138,9 +137,58 @@ int debugf_d(const int line, const char *func, const char *file, const char *for
  * @sa debugf_d
  */
 
-#ifndef debugf
 #define debugf(format, argv...) debugf_d(__LINE__, __func__, __FILE__, format, ##argv)
-#endif //debugf
+
+/**
+ * @name formatTime
+ * @category 函数
+ * @param buf 指向目标数组的指针，用来复制产生的字符串
+ * @param BufSize 被复制到buf的最大字符数
+ * @param format 格式串，如果为NULL，则默认为"%Y-%m-%d %H:%M:%S"形式
+ * @return 如果产生的字符串小于BufSize个字符（包括空结束字符），则会返回复制到buf中的字符总数（不包括空结束字符），否则返回零
+ * @details
+ * 说明符  替换为                 样例\n
+ * %a   缩写的星期几名称            Sun\n
+ * %A   完整的星期几名称            Sunday\n
+ * %b   缩写的月份名称             Mar\n
+ * %B	完整的月份名称             March\n
+ * %c	日期和时间表示法            Sun Aug 19 02:56:02 2012\n
+ * %d	一月中的第几天（01-31）      19\n
+ * %H	24 小时格式的小时（00-23）   14\n
+ * %I	12 小时格式的小时（01-12）   05\n
+ * %j	一年中的第几天（001-366）    231\n
+ * %m	十进制数表示的月份（01-12）    08\n
+ * %M	分（00-59）                55\n
+ * %p	AM 或 PM 名称              PM\n
+ * %S	秒（00-61）                02\n
+ * %U	一年中的第几周，以第一个星期日作为第一周的第一天（00-53）	33\n
+ * %w	十进制数表示的星期几，星期日表示为 0（0-6）	4\n
+ * %W	一年中的第几周，以第一个星期一作为第一周的第一天（00-53）	34\n
+ * %x	日期表示法                   08/19/12\n
+ * %X	时间表示法                   02:50:06\n
+ * %y	年份，最后两个数字（00-99）    01\n
+ * %Y	年份                      2012\n
+ * %Z	时区的名称或缩写            CDT\n
+ * %%	一个%符号                   %
+ * @sa FormatTime
+ */
+
+__mingw_ovr
+__attribute__((__format__(strftime, 3, 0))) __MINGW_ATTRIB_NONNULL(1)
+size_t formatTime(char* buf, size_t BufSize, const char* format){
+  time_t current = time(NULL);
+  return strftime(buf, BufSize, format ? format : "%Y-%m-%d %H:%M:%S", localtime(&current));
+}
+
+/**
+ * @name FormatTime
+ * @category 宏
+ * @param buf 指向目标数组的指针，用来复制产生的字符串
+ * @details 使用formatTime函数的简便方式
+ * @sa formatTime
+ */
+
+#define FormatTime(buf) formatTime(buf, sizeof(buf), NULL)
 
 #ifdef __cplusplus
 }

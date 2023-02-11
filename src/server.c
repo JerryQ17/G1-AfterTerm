@@ -36,9 +36,10 @@ void ServerInit(void){
       RecordFlag = 0;
       errorf("Failed to open cfg/slog.txt\n");
     }else{
-      time_t cur_time = time(NULL);
-      recordf("ServerInit: Program start at %sRecordFlag = %d\tmod = %d\n",
-              ctime(&cur_time), RecordFlag, mod);
+      char TimeStr[BUF_SIZE] = {0};
+      FormatTime(TimeStr);
+      recordf("ServerInit: Program start at %s\nRecordFlag = %d\tmod = %d\n",
+              TimeStr, RecordFlag, mod);
     }
   }
   //服务器初始化
@@ -90,8 +91,9 @@ void ServerQuit(const int code){
   //关闭WSA
   WSACleanup();
   if (RecordFlag){
-    time_t cur_time = time(NULL);
-    recordf("ServerQuit: Program quit with code %d at %s\n", code, ctime(&cur_time));
+    char TimeStr[BUF_SIZE] = {0};
+    FormatTime(TimeStr);
+    recordf("ServerQuit: Program quit with code %d at %s\n", code, TimeStr);
   }
   exit(code);
 }
