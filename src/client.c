@@ -1,5 +1,6 @@
 #include "client.h"
 
+__attribute__((unused))
 int SDL_main(int argc, char* argv[]){
   //客户端初始化
   ClientCfgInit();
@@ -22,7 +23,8 @@ void ClientCfgInit(void){
   FILE* cfg = fopen(CFG_PATH, "r");
   if (cfg != NULL) {
     //读取设置失败 不影响游戏运行 只需要报告错误
-    if (fscanf(cfg, "RecordFlag=%d\nServerIP=%15s\nServerPort=%hd", &RecordFlag, ServerIP, &ServerPort) < CFG_ITEM){
+    if (fscanf(cfg, "RecordFlag=%d\nmod=%d\nServerIP=%15s\nServerPort=%hd",
+                &RecordFlag, &mod, ServerIP, &ServerPort) < CFG_ITEM){
       fprintf(stderr, "ClientCfgInit: Error occurred when loading configs, ");
       if (feof(cfg)) fprintf(stderr, "EOF\n");
       else if (ferror(cfg))  fprintf(stderr, "Read Error\n");
@@ -37,7 +39,8 @@ void ClientCfgInit(void){
       errorf("Failed to open cfg/slog.txt\n");
     }else{
       time_t cur_time = time(NULL);
-      recordf("ClientCfgInit: Program start at %sRecordFlag = %d\n", ctime(&cur_time), RecordFlag);
+      recordf("ClientCfgInit: Program start at %sRecordFlag = %d\tmod = %d\n",
+              ctime(&cur_time), RecordFlag, mod);
     }
   }
   memset(&GameCondition, 0, sizeof(GameCondition));
@@ -59,7 +62,7 @@ void ClientLibInit(void){
     ClientQuit(SDL_INIT_ERROR);
     exit(SDL_INIT_ERROR);
   }
-  Window = SDL_CreateWindow(TITLE,SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,WIN_WIDTH,WIN_HEIGHT,SDL_WINDOW_SHOWN);
+  Window = SDL_CreateWindow(WIN_TITLE, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN);
   if (Window == NULL) {   //窗口初始化失败
     errorf("ClientLibInit: Cannot create Window, %s\n", SDL_GetError());
     ClientQuit(WINDOW_CREATE_ERROR);
@@ -94,7 +97,7 @@ void ClientIPInit(char *IP, u_short port, bool flag){      //获取服务器的I
   strncat(tmpIP, ServerIP, 7);
   if ((!flag || !strcmp(tmpIP, "192.168")) && ServerPort > 1023) {  //cfg文件
     recordf("Valid Initial Network Config, IP = %s, Port = %hd\n", ServerIP, ServerPort);
-    Debug("Valid Initial Network Config, IP = %s, Port = %hd\n", ServerIP, ServerPort);
+    debugf_b("Valid Initial Network Config, IP = %s, Port = %hd\n", ServerIP, ServerPort);
     return;
   }
   if (IP != NULL && port > 1023) {                                  //命令行参数
@@ -180,7 +183,7 @@ void ClientEventLoop(void){
           break;
         case SDL_MOUSEBUTTONUP:
           recordf("ClientEventLoop: Mouse button up (%d, %d)\n", event.button.x, event.button.y);
-          Debug("ClientEventLoop: Mouse button up (%d, %d)\n", event.button.x, event.button.y);
+          debugf_b("ClientEventLoop: Mouse button up (%d, %d)\n", event.button.x, event.button.y);
           if (state == MAIN) {    //主界面
             if (event.button.x > SINGLE_MIN_X && event.button.x < SINGLE_MAX_X
                 && event.button.y > SINGLE_MIN_Y && event.button.y < SINGLE_MAX_Y) {  //单人
@@ -289,9 +292,22 @@ void ClientGameChange(void){    //一个难度的砖块结束后，改变游戏�
     }
   }else{    //生命值为0，游戏结束
     ClientDrawText("You Lose!", WL_X, WL_Y, true);
-    SDL_Delay(WL_DELAY);
-    ClientGameQuit();
+    if (state == ONE_PLAYER) {        //单人模式直接返回mainUI
+      SDL_Delay(WL_DELAY);
+      ClientGameQuit();
+    }else if (state == LOCAL_DEATH){  //多人模式
+
+    }else if (state == NET_DEATH){    //都
+
+    }else{
+      state = LOCAL_DEATH;
+    }
     return;
+  }
+  //锁定GameChangeMutex
+  if (state != MAIN && state != ONE_PLAYER) {
+    pthread_mutex_lock(&GameChangeMutex);
+    GameChangeFlag = true;
   }
   //改变难度，判断游戏是否结束
   difficulty++;
@@ -300,11 +316,6 @@ void ClientGameChange(void){    //一个难度的砖块结束后，改变游戏�
     SDL_Delay(WL_DELAY);
     ClientGameQuit();
     return;
-  }
-  //锁定GameChangeMutex
-  if (state != MAIN && state != ONE_PLAYER) {
-    pthread_mutex_lock(&GameChangeMutex);
-    GameChangeFlag = true;
   }
   //摧毁对象
   BrickArrDestroy(BrickArr);
@@ -355,7 +366,7 @@ void ClientGameQuit(void){
   BrickPre = false;
   BallDestroy(LocalBall);
   BoardDestroy(LocalBoard);
-  state = MAIN;
+  memset(&GameCondition, 0, sizeof(GameCondition));
   ClientRender();
   ClientPlayBGM();
 }
@@ -405,7 +416,7 @@ void ClientConnect(SOCKET *server, SOCKADDR_IN* server_addr){
     } else break;
   }
   recordf("ClientConnect: connect success return %d code %d\n", cv, WSAGetLastError());
-  Debug("ClientConnect: connect success return %d code %d\n", cv, WSAGetLastError());
+  debugf_b("ClientConnect: connect success return %d code %d\n", cv, WSAGetLastError());
 }
 
 void* ClientTransmissionThread(void* ThreadArgv){
@@ -425,10 +436,11 @@ void* ClientTransmissionThread(void* ThreadArgv){
         pthread_cond_signal(&GameInitCond);
         pthread_mutex_unlock(&GameInitMutex);
         ARG++;
-        Debug("LocalNum: %d\n", GameCondition.LocalNum);
+        debugf_b("LocalNum: %d\n", GameCondition.LocalNum);
         break;
       case 1:   //根据服务端的数据对砖块初始化
-        SocketSend(ServerSocket, "BrickOrder");
+        sprintf(Send, "BrickOrder%d", difficulty);
+        SocketSend(ServerSocket, Send);
         SocketReceive(ServerSocket, Receive);
         char *brk_ptr = Receive;
         for (int i = 0; i < BrickNum[difficulty]; i++) {
@@ -454,6 +466,7 @@ void* ClientTransmissionThread(void* ThreadArgv){
         ClientDataResolve(Send, CLIENT_TO_SERVER);
         SocketSend(ServerSocket, Send);
         SocketReceive(ServerSocket, Receive);
+        //对方异常退出
         if (!strcmp(Receive, "quit")){
           pthread_mutex_lock(&NetQuitMutex);
           ClientDrawText("Player Disconnect", USER_TIP_X, USER_TIP_Y, true);
@@ -487,16 +500,23 @@ void ClientDataResolve(char* buf, bool flag){    //客户端数据解析
   //锁定GameChangeMutex
   pthread_mutex_lock(&GameChangeMutex);
   //数据解析
-  if (flag == CLIENT_TO_SERVER){
-    sprintf(buf, "%d %d %d %f %f ", GameCondition.LocalNum,
+  if (flag == CLIENT_TO_SERVER){        //客户端数据转换为服务端数据
+    //改变游戏难度
+    if (GameChangeFlag){
+      sprintf(buf, "BrickOrder%d", difficulty);
+      return;
+    }
+    //正常发送数据
+    sprintf(buf, "%d %d %d %d %f %f ", GameCondition.LocalNum, LocalBoard->life,
             GameCondition.LocalBoardX, GameCondition.LocalBoardY, GameCondition.LocalBallX, GameCondition.LocalBallY);
     for (int i = 0; i < BrickNum[difficulty]; i++){
       char temp[3] = {(char)(BrickArr[i].life + 48), ' '};
       strcat(buf, temp);
     }
-  }else if (flag == SERVER_TO_CLIENT){
+  }else if (flag == SERVER_TO_CLIENT){  //服务端数据转换为客户端数据
     char *ptr = buf;
     if (strtol(ptr, &ptr, 10) == GameCondition.NetNum) {
+      NetBoard->life = strtol(ptr, &ptr, 10);
       NetBoard->DestRect.x = strtol(ptr, &ptr, 10);
       NetBoard->DestRect.y = strtol(ptr, &ptr, 10);
       NetBall->DestRect.x = strtof(ptr, &ptr);
@@ -523,7 +543,7 @@ void ClientRender(void){    //客户端UI渲染
     SDL_RenderCopy(Renderer, MainTexture, NULL, &MainRect);
     SDL_RenderPresent(Renderer);
     SDL_DestroyTexture(MainTexture);
-  } else {    //渲染gameUI
+  } else {              //渲染gameUI
     GameTexture = SDL_CreateTextureFromSurface(Renderer, GameSurface);
     SDL_RenderCopy(Renderer, GameTexture, NULL, &GameRect);
     if (BrickPre) {   //如果砖块已经初始化，就渲染砖块
@@ -650,6 +670,7 @@ void BoardDestroy(Board* const board){   //销毁Board对象
 
 void BallCreate(Ball* ball, Board* const board){   //创建Ball对象
   ball->score = 0;
+  ball->hit = 0;
   ball->SetOff = false;
   ball->dir = VERTICAL;
   ball->k = BallInitialK;
@@ -734,17 +755,25 @@ void BallMove(Ball* const ball){            //小球移动
 
 void BallHit(Ball* ball, Brick* brick, const char* mode){   //小球与对象的碰撞
   if (!strcmp(mode, "bu") || !strcmp(mode, "bd")){    //砖块上方或下方
+    ElementReact(ball, brick);
+    ball->hit++;
     ball->k = -ball->k;
     ball->score++;
+    ball->element = brick->element;
+    ball->sur = IMG_Load(BallPathVec[ball->element]);
     brick->life--;
-    brick->alpha = (uint8_t)((double)(brick->life) / BrickLifeVec[difficulty] * UINT8_MAX);\
+    brick->alpha = (uint8_t)((double)(brick->life) / BrickLifeVec[difficulty] * UINT8_MAX);
   }else if (!strcmp(mode, "bl")){                     //砖块左侧
+    ElementReact(ball, brick);
+    ball->hit++;
     ball->dir = LEFT;
     ball->score++;
     ball->k = -ball->k;
     brick->life--;
     brick->alpha = (uint8_t)((double)(brick->life) / BrickLifeVec[difficulty] * UINT8_MAX);
   }else if (!strcmp(mode, "br")){                       //砖块右侧
+    ElementReact(ball, brick);
+    ball->hit++;
     ball->dir = RIGHT;
     ball->score++;
     ball->k = -ball->k;
@@ -767,6 +796,7 @@ void BallHit(Ball* ball, Brick* brick, const char* mode){   //小球与对象的
       pthread_mutex_unlock(&BoardMoveMutex);
     }
     //再修改小球的属性
+    ball->hit = 0;
     ball->SetOff = false;
     ball->dir = VERTICAL;
     ball->k = BallInitialK;
@@ -825,14 +855,52 @@ void BrickDestroy(Brick* const brick){
   memset(brick, 0, sizeof(Brick));
 }
 
+void ElementReact(Ball* ball, Brick* brick) {
+  //检查反应条件
+  if (!mod && brick->life == 0 || ball->board->life == 0) return;
+  debugf("ball->element = %d", ball->element);
+  //进行反应
+  const Element BallElement = ball->element;
+  const Element BrickElement = brick->element;
+  debugf("BallElement = %d\tBrickElement = %d", BallElement, BrickElement);
+  if ((BallElement == FIRE && BrickElement == THUNDER) || (BallElement == THUNDER && BrickElement == FIRE)) {
+    /*火元素和雷元素相遇会爆炸，对半径一定范围内的砖块全部造成一次攻击*/
+    ball->element = EMPTY;
+    ball->score += (brick->life + REACT_BONUS);
+    brick->life = 0;
+    for (int i = 0; i < BrickNum[difficulty]; i++) {
+      if (BrickArr[i].life &&
+      abs(ObjectMinX(&BrickArr[i]) - ObjectMinX(brick)) <= brick->DestRect.w &&
+      abs(ObjectMinY(&BrickArr[i]) - ObjectMinY(brick)) <= brick->DestRect.h){
+        ball->score += (BrickArr[i].life + REACT_BONUS);
+        BrickArr[i].life--;
+      }
+    }
+  }else if ((BallElement == WATER || BallElement == ICE) && BrickElement == THUNDER) {
+    /*水元素小球或冰元素小球撞击雷元素砖块会引发链式反应，导致相邻的水元素砖块全部受到一次攻击*/
+    for (int i = 0; i < BrickNum[difficulty]; i++) {
+      if (BrickArr[i].life && (BrickArr[i].element == WATER || BrickArr[i].element == ICE) &&
+          abs(ObjectMinX(&BrickArr[i]) - ObjectMinX(brick)) <= brick->DestRect.w &&
+          abs(ObjectMinY(&BrickArr[i]) - ObjectMinY(brick)) <= brick->DestRect.h){
+        ball->score += (BrickArr[i].life + REACT_BONUS);
+        BrickArr[i].life--;
+      }
+    }
+  }else if (BallElement == EMPTY && BrickElement != EMPTY) {
+    /*无元素小球撞击相应元素砖块会附着上相应元素*/
+    ball->element = brick->element;
+    ball->sur = IMG_Load(BallPathVec[ball->element]);
+  }
+}
+
 void SocketReceive(SOCKET soc, char* buf){    //从soc接受buf
   recv(soc, buf, BUF_SIZE, 0);
   recordf("SocketReceive: soc = %llu\nReceiveMessage(%llu):\n%s\n", soc, strlen(buf), buf);
-  Debug("ReceiveMessage(%llu):\n%s\n", strlen(buf), buf);
+  debugf_b("ReceiveMessage(%llu):\n%s\n", strlen(buf), buf);
 }
 
 void SocketSend(SOCKET soc, const char* buf){   //发送buf给soc
   send(soc, buf, (int)(strlen(buf)) + 1, 0);
   recordf("SocketSend: soc = %llu\nSendMessage(%llu):\n%s\n", soc, strlen(buf), buf);
-  Debug("SendMessage(%llu):\n%s\n", strlen(buf), buf);
+  debugf_b("SendMessage(%llu):\n%s\n", strlen(buf), buf);
 }

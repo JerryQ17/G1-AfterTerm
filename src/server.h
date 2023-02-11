@@ -22,6 +22,7 @@
 #define IP_FAILURE      1
 #define SOCKET_FAILURE  2
 #define BIND_FAILURE    3
+#define NUM_ERROR       10
 
 #define CLIENT_TO_SERVER true
 #define SERVER_TO_CLIENT false
@@ -41,9 +42,10 @@ static char ServerIP[17] = {0};
 static int ClientNumber = 0;
 static SOCKET ServerSocket, ClientSocket[2];
 static struct sockaddr_in ServerAddr, ClientAddr[2];
+static int mod = 0;
 static int difficulty = 0;
 static float BallX[2] = {0}, BallY[2] = {0};
-static int BoardX[2] = {0}, BoardY[2] = {0};
+static int BoardX[2] = {0}, BoardY[2] = {0}, BoardLife[2] = {0};
 static int BrickLife[90] = {0};
 static volatile bool PlayerQuit = false;
 
@@ -60,7 +62,7 @@ static char BrickOrder[BUF_SIZE] = {0};
 void  ServerInit(void);
 void  ServerIP_LAN(char *ip);
 void  ServerQuit(int code);
-void* ServerTransmissionThread(void* ThreadArgv);
+_Noreturn void* ServerTransmissionThread(void* ThreadArgv);
 void  ServerDataResolve(char* buf, int ThreadNum, bool flag);
 
 void  BrickArrCreate(char* ret, int diff);

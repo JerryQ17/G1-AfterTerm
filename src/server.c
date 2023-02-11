@@ -7,7 +7,6 @@ int main(){
   //创建传输线程，互斥锁和条件变量
   pthread_mutex_init(&GameInitMutex, NULL);
   pthread_cond_init(&GameInitCond, NULL);
-  BrickArrCreate(BrickOrder, 0);
   for (int i = 0; i < 2; i++) {
     SocketAccept(&ServerSocket, &ClientSocket[i], &ClientAddr[i]);
     ClientNumber++;
@@ -22,7 +21,8 @@ void ServerInit(void){
   //读取设置文件
   FILE* cfg = fopen(CFG_PATH, "r");
   if (cfg != NULL) {
-    if (fscanf(cfg, "RecordFlag=%d", &RecordFlag) < CFG_ITEM){   //读取设置失败 不影响游戏运行 只需要报告错误
+    if (fscanf(cfg, "RecordFlag=%d\nmod=%d", &RecordFlag, &mod) < CFG_ITEM) {
+      //读取设置失败 不影响游戏运行 只需要报告错误
       fprintf(stderr, "ServerInit: Error occurred when loading configs, ");
       if (feof(cfg)) fprintf(stderr, "EOF\n");
       else if (ferror(cfg))  fprintf(stderr, "Read Error\n");
@@ -37,7 +37,8 @@ void ServerInit(void){
       errorf("Failed to open cfg/slog.txt\n");
     }else{
       time_t cur_time = time(NULL);
-      recordf("ServerInit: Program start at %srecord = %d\n", ctime(&cur_time), RecordFlag);
+      recordf("ServerInit: Program start at %sRecordFlag = %d\tmod = %d\n",
+              ctime(&cur_time), RecordFlag, mod);
     }
   }
   //服务器初始化
@@ -79,8 +80,14 @@ void ServerIP_LAN(char *ip){    //获取本机局域网IP地址
 }
 
 void ServerQuit(const int code){
+  //销毁互斥锁和条件量
   pthread_cond_destroy(&GameInitCond);
   pthread_mutex_destroy(&GameInitMutex);
+  pthread_mutex_destroy(&TransmissionMutex[0]);
+  pthread_cond_destroy(&TransmissionCond[0]);
+  pthread_mutex_destroy(&TransmissionMutex[1]);
+  pthread_cond_destroy(&TransmissionCond[1]);
+  //关闭WSA
   WSACleanup();
   if (RecordFlag){
     time_t cur_time = time(NULL);
@@ -89,7 +96,7 @@ void ServerQuit(const int code){
   exit(code);
 }
 
-void* ServerTransmissionThread(void* ThreadArgv){
+_Noreturn void* ServerTransmissionThread(void* ThreadArgv){
   pthread_mutex_init(&TransmissionMutex[ARG], NULL);
   pthread_cond_init(&TransmissionCond[ARG], NULL);
   char SendBuf[BUF_SIZE] = {0}, RecBuf[BUF_SIZE] = {0};
@@ -107,18 +114,19 @@ void* ServerTransmissionThread(void* ThreadArgv){
       pthread_mutex_lock(&GameInitMutex);
       if (ARG) pthread_cond_signal(&GameInitCond);
       else pthread_cond_wait(&GameInitCond, &GameInitMutex);
-      sprintf(SendBuf, "GameStart%d", 0);
+      sprintf(SendBuf, "GameStart%d", difficulty);
       SocketSend(ClientSocket[ARG], SendBuf);
       pthread_mutex_unlock(&GameInitMutex);
-    }else if (!strcmp(RecBuf, "BrickOrder")) {
+    }else if (strstr(RecBuf, "BrickOrder")) {
+      if (!ARG) {
+        difficulty = strtol(RecBuf + 10, NULL, 10);
+        BrickArrCreate(BrickOrder, difficulty);
+      }
       SocketSend(ClientSocket[ARG], BrickOrder);
-    }else if (!strcmp(RecBuf, "quit")) {
-      ServerDataResolve(RecBuf, ARG, SERVER_TO_CLIENT);
-      break;
     }else{
-      ServerDataResolve(RecBuf, ARG, SERVER_TO_CLIENT);
+      ServerDataResolve(RecBuf, ARG, CLIENT_TO_SERVER);
     }
-    /*ServerDataResolve(SendBuf, ARG, CLIENT_TO_SERVER);
+    /*ServerDataResolve(SendBuf, ARG, SERVER_TO_CLIENT);
     SocketSend(ClientSocket[ARG], SendBuf);*/
     memset(SendBuf, 0, BUF_SIZE);
     memset(RecBuf, 0, BUF_SIZE);
@@ -126,18 +134,19 @@ void* ServerTransmissionThread(void* ThreadArgv){
 }
 
 void ServerDataResolve(char* buf, int ThreadNum, bool flag){    //服务端数据解析
-  if (flag == SERVER_TO_CLIENT) {
-    if (!strcmp(buf, "quit")) {
+  if (flag == CLIENT_TO_SERVER) {
+    if (!strcmp(buf, "quit")) {     //客户端异常退出
       closesocket(ClientSocket[ThreadNum]);
       if (ClientNumber) {
         ClientNumber = 0;
         PlayerQuit = true;
         pthread_exit(NULL);
       }else ServerQuit(EXIT_SUCCESS);
-    }else{
+    }else{                          //正常接收数据
       pthread_mutex_lock(&TransmissionMutex[ThreadNum]);
       char* ptr = buf;
       if (strtol(ptr, &ptr, 10) == ThreadNum){
+        BoardLife[ThreadNum] = strtol(ptr, &ptr, 10);
         BoardX[ThreadNum] = strtol(ptr, &ptr, 10);
         BoardY[ThreadNum] = strtol(ptr, &ptr, 10);
         BallX[ThreadNum] = strtof(ptr, &ptr);
@@ -147,13 +156,13 @@ void ServerDataResolve(char* buf, int ThreadNum, bool flag){    //服务端数�
         }
       }else{
         errorf("Wrong ClientNum\n");
-        //TODO
+        ServerQuit(NUM_ERROR);
       }
       pthread_mutex_unlock(&TransmissionMutex[ThreadNum]);
     }
-  }else if (flag == CLIENT_TO_SERVER) {
+  }else if (flag == SERVER_TO_CLIENT) {
     pthread_mutex_lock(&TransmissionMutex[!ThreadNum]);
-    sprintf(buf, "%d %d %d %f %f ", !ThreadNum,
+    sprintf(buf, "%d %d %d %d %f %f ", !ThreadNum, BoardLife[!ThreadNum],
             BoardX[!ThreadNum], BoardY[!ThreadNum], BallX[!ThreadNum], BallY[!ThreadNum]);
     for (int i = 0; i < BrickNum[difficulty]; i++){
       char temp[3] = {(char)(BrickLife[i] + 48), ' '};
@@ -199,7 +208,7 @@ void SocketCreate(SOCKET *soc, struct sockaddr_in *addr){
     ServerQuit(BIND_FAILURE);
   }
   recordf("SocketCreate: socket %llu bind success(port %d)\n", *soc, i);
-#ifdef DEBUG
+#ifdef MY_DEBUG_FLAG__NJU_SE_2022__
   printf("SocketCreate: socket %llu bind success(port %d)\n", *soc, i);
 #endif
 }
@@ -211,7 +220,7 @@ void SocketListen(SOCKET soc, int backlog){
     return;
   }
   recordf("SocketListen: listen success\n");
-#ifdef DEBUG
+#ifdef MY_DEBUG_FLAG__NJU_SE_2022__
   printf("SocketListen: listen success\n");
 #endif
 }
@@ -224,7 +233,7 @@ void SocketAccept(const SOCKET* ser, SOCKET* cli, struct sockaddr_in* cli_addr){
     return;
   }
   recordf("SocketAccept: accept success ser(soc%llu) cli(soc%llu)\n", *ser, *cli);
-#ifdef DEBUG
+#ifdef MY_DEBUG_FLAG__NJU_SE_2022__
   printf("SocketAccept: accept success ser(%llu) cli(%llu)\n", *ser, *cli);
 #endif
 }
@@ -232,11 +241,11 @@ void SocketAccept(const SOCKET* ser, SOCKET* cli, struct sockaddr_in* cli_addr){
 void SocketReceive(SOCKET soc, char* buf){    //从soc接受buf
   recv(soc, buf, BUF_SIZE, 0);
   recordf("SocketReceive: soc = %llu\nReceiveMessage(%llu):\n%s\n", soc, strlen(buf), buf);
-  Debug("ReceiveMessage(%llu):\n%s\n", strlen(buf), buf);
+  debugf_b("ReceiveMessage(%llu):\n%s\n", strlen(buf), buf);
 }
 
 void SocketSend(SOCKET soc, const char* buf){   //发送buf给soc
   send(soc, buf, (int)(strlen(buf)) + 1, 0);
   recordf("SocketSend: soc = %llu\nSendMessage(%llu):\n%s\n", soc, strlen(buf), buf);
-  Debug("SendMessage(%llu):\n%s\n", strlen(buf), buf);
+  debugf_b("SendMessage(%llu):\n%s\n", strlen(buf), buf);
 }

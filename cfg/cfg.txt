@@ -1,3 +1,4 @@
 RecordFlag=0
-ServerIP=192.168.1.7
+mod=1
+ServerIP=192.168.1.10
 ServerPort=1024

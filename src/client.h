@@ -23,12 +23,14 @@
 
 //宏定义
 
-#define TITLE       "冬津羽戏客户端"             //窗口标题
+#define WIN_TITLE   "Breakout Client"         //窗口标题
 #define WIN_WIDTH   1280                      //窗口宽度
 #define WIN_HEIGHT  720                       //窗口高度
 #define FONT_SIZE   60                        //字体大小
-#define CFG_ITEM    3                         //配置数量
-#define BUF_SIZE    1000
+#define CFG_ITEM    4                         //配置数量
+#define BUF_SIZE    1000                      //缓冲大小
+#define FRAME_RATE  60
+#define REACT_BONUS 1                         //反应奖励
 
 #define SINGLE_MIN_X  255                     //mainUI的单人按钮的x最小值
 #define SINGLE_MAX_X  512                     //mainUI的单人按钮的x最大值
@@ -61,19 +63,19 @@
 #define RED_BOARD_PATH  "img/RedBoard.png"    //红色弹板路径
 #define BLUE_BOARD_PATH "img/BlueBoard.png"   //蓝色弹板路径
 
-#define IP_STEP       5
-#define CONNECT_STEP  20
+#define IP_STEP       5                       //输入IP最大次数
+#define CONNECT_STEP  20                      //尝试连接服务端最大次数
 
-#define CONNECT_DELAY 1000
-#define WL_DELAY      2000
-#define OFFLINE_DELAY 2000
+#define CONNECT_DELAY 1000                    //连接服务端失败的显示时间
+#define WL_DELAY      2000                    //输赢的显示时间
+#define OFFLINE_DELAY 2000                    //另一名玩家下线的显示时间
 
-#define LAN true
+#define LAN true                              //局域网模式
 //#define WAN false
 //#define BLUE true
-#define RED false
-#define CLIENT_TO_SERVER true
-#define SERVER_TO_CLIENT false
+#define RED false                             //红色弹板
+#define CLIENT_TO_SERVER true                 //客户端发送服务端
+#define SERVER_TO_CLIENT false                //服务端发送客户端
 
 #define IP_FAILURE              1
 #define SOCKET_FAILURE          2
@@ -131,7 +133,7 @@ typedef enum Element{             //元素种类
   EMPTY = 4
 }Element;
 
-typedef struct Board{   //挡板
+typedef struct Board{             //挡板
   int life;
   uint8_t alpha;
   SDL_Surface* sur;
@@ -140,14 +142,15 @@ typedef struct Board{   //挡板
   SDL_Rect DestRect;
 }Board;
 
-typedef enum BallDir{   //弹球方向
+typedef enum BallDir{             //弹球方向
   LEFT = -1,
   VERTICAL = 0,
   RIGHT = 1
 }BallDir;
 
-typedef struct Ball{    //弹球
+typedef struct Ball{              //弹球
   int score;
+  int hit;
   bool SetOff;
   BallDir dir;
   double k;
@@ -158,7 +161,7 @@ typedef struct Ball{    //弹球
   SDL_FRect DestRect;
 }Ball;
 
-typedef struct Brick{   //砖块
+typedef struct Brick{             //砖块
   int life;
   Element element;
   uint8_t alpha;
@@ -174,6 +177,7 @@ static SOCKET           ServerSocket;
 static SOCKADDR_IN      ServerAddr;
 static char             ServerIP[17]      = "0.0.0.0";
 static u_short          ServerPort        = 0;
+static int              mod               = 0;
 static char             Send[BUF_SIZE]    = {0};
 static char             Receive[BUF_SIZE] = {0};
 static game_condition   GameCondition;
@@ -229,12 +233,14 @@ static SDL_Rect     FontRect;
 static SDL_Color    FontColor   = {0x88, 0x0a, 0x39, 0xff};
 
 static Mix_Music*   bgm;                              //BGM
+//static Mix_Chunk*   sound;                            //音效
 static const int    BgmVolumeVec[]  = {100, 45, 60, 80};
 static const char*  BgmPathVec[]    = { "msc/George Duke-It's On.mp3",
                                         "msc/Tennis-I'm Callin'.mp3",
                                         "msc/Nieve-WriteThisDown.mp3",
                                         "msc/Swollen Members-Fuel Injected.mp3",
                                         "msc/Lakey-Inspired-The-Process.mp3"};
+//static const char*  SoundPathVec[]  = {};
 
 //函数声明
 
@@ -267,6 +273,8 @@ void  BrickCreate(Brick* brick, int x, int y, Element color);
 void  BrickArrCreate(Brick *arr);
 void  BrickArrDestroy(Brick *arr);
 void  BrickDestroy(Brick* brick);
+
+void  ElementReact(Ball* ball, Brick* brick);
 
 void  SocketReceive(SOCKET soc, char* buf);
 void  SocketSend(SOCKET soc, const char* buf);
