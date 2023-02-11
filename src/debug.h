@@ -26,7 +26,7 @@ extern "C" {
  * @sa recordf
  */
 
-int RecordFlag = 0;
+static int RecordFlag = 0;
 
 /**
  * @name LogFilePtr
@@ -34,7 +34,7 @@ int RecordFlag = 0;
  * @sa recordf
  */
 
-FILE *LogFilePtr = NULL;
+static FILE *LogFilePtr = NULL;
 
 /**
  * @name recordf
