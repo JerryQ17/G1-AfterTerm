@@ -55,6 +55,7 @@ static char             BrickOrder[BUF_SIZE] = {0};
 static float            BallX[2] = {0};
 static float            BallY[2] = {0};
 static volatile bool    PlayerQuit = false;
+static volatile bool    BrickFlag = false;
 
 static pthread_t        ClientThread[2];
 static int              ThreadArg[2] = {0, 1};

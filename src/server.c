@@ -64,8 +64,9 @@ void ServerIP_LAN(char *ip){    //获取本机局域网IP地址
   for (int i = 0; host->h_addr_list[i] != NULL; i++){   //筛选局域网IP
     temp.s_addr = *(u_long*)host->h_addr_list[i];
     char tmp[17] = {0};
-    strncat(tmp, inet_ntoa(temp), 10);
-    if (!strcmp(tmp, "192.168.1.")){
+    debugf("%s", inet_ntoa(temp));
+    strncat(tmp, inet_ntoa(temp), 8);
+    if (!strcmp(tmp, "192.168.")){
       addr.s_addr = *(u_long*)host->h_addr_list[i];
       break;
     }
@@ -121,8 +122,12 @@ _Noreturn void* ServerTransmissionThread(void* ThreadArgv){
       pthread_mutex_unlock(&GameInitMutex);
     }else if (strstr(RecBuf, "BrickOrder")) {
       if (!ARG) {
+        BrickFlag = false;
         difficulty = strtol(RecBuf + 10, NULL, 10);
         BrickArrCreate(BrickOrder, difficulty);
+        BrickFlag = true;
+      }else{
+        while (!BrickFlag);
       }
       SocketSend(ClientSocket[ARG], BrickOrder);
     }else{
@@ -137,7 +142,7 @@ _Noreturn void* ServerTransmissionThread(void* ThreadArgv){
 
 void ServerDataResolve(char* buf, int ThreadNum, bool flag){    //服务端数据解析
   if (flag == CLIENT_TO_SERVER) {
-    if (!strcmp(buf, "quit")) {     //客户端异常退出
+    if (!strcmp(buf, "quit") || !strcmp(buf, "abort")) {     //客户端异常退出
       closesocket(ClientSocket[ThreadNum]);
       if (ClientNumber) {
         ClientNumber = 0;

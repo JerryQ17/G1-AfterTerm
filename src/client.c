@@ -5,11 +5,11 @@ int SDL_main(int argc, char* argv[]){
   //客户端初始化
   ClientCfgInit();
   if (argc == 3) {
-    ClientIPInit(argv[1], (u_short) strtol(argv[2], NULL, 10), LAN);
+    ClientIPInit(argv[1], (u_short) strtol(argv[2], NULL, 10));
   }
   else {
     errorf("Invalid argv\n");
-    ClientIPInit(NULL, 0, LAN);
+    ClientIPInit(NULL, 0);
   }
   ClientLibInit();
   ClientLoadResource();
@@ -94,17 +94,17 @@ void ClientLibInit(void){
   }
 }
 
-void ClientIPInit(char *IP, u_short port, bool flag){      //获取服务器的IP地址以及端口,flag控制局域网还是广域网
+void ClientIPInit(const char *IP, u_short port){      //获取服务器的IP地址以及端口,flag控制局域网还是广域网
   char tmpIP[8] = {0};
   strncat(tmpIP, ServerIP, 7);
-  if ((!flag || !strcmp(tmpIP, "192.168")) && ServerPort > 1023) {  //cfg文件
+  if (!strcmp(tmpIP, "192.168") && ServerPort > 1023) {  //cfg文件
     recordf("Valid Initial Network Config, IP = %s, Port = %hd\n", ServerIP, ServerPort);
     debugf_b("Valid Initial Network Config, IP = %s, Port = %hd\n", ServerIP, ServerPort);
     return;
   }
   if (IP != NULL && port > 1023) {                                  //命令行参数
     strncpy(tmpIP, IP, 7);
-    if ((!flag || !strcmp(tmpIP, "192.168")) && port > 1023) {
+    if (!strcmp(tmpIP, "192.168") && port > 1023) {
       strcpy(ServerIP, IP);
       ServerPort = port;
       return;
@@ -125,7 +125,7 @@ void ClientIPInit(char *IP, u_short port, bool flag){      //获取服务器的I
     scanf("%s", PortInput);
     ServerPort = (u_short)strtol(PortInput, NULL, 10);
     strncpy(tmpIP, ServerIP, 7);
-    if ((!flag || !strcmp(tmpIP, "192.168")) && ServerPort > 1023){
+    if (!strcmp(tmpIP, "192.168") && ServerPort > 1023){
       recordf("Valid Network Config, IP = %s, Port = %hd\n", IP, port);
       printf("Valid Network Config, IP = %s, Port = %hd\n", IP, port);
       return;
@@ -149,8 +149,8 @@ void ClientEventLoop(void){
   while (true) {
     if (state != MAIN && state != ONE_PLAYER) pthread_mutex_lock(&NetQuitMutex);
     //小球移动
-    if (state != MAIN && state != LOCAL_DEATH) BallMove(LocalBall);
-    if (state == TWO_PLAYER || state == LOCAL_DEATH) BallMove(NetBall);
+    if (state != MAIN) BallMove(LocalBall);
+    if (state == TWO_PLAYER) BallMove(NetBall);
     //事件处理
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
@@ -282,6 +282,7 @@ void ClientGameInit(void){
     pthread_mutex_init(&GameChangeMutex, NULL);
     pthread_cond_init(&GameChangeCond, NULL);
     pthread_mutex_init(&NetQuitMutex, NULL);
+    pthread_mutex_init(&GameQuitMutex, NULL);
   }
   ClientPlayBGM();
 }
@@ -293,16 +294,15 @@ void ClientGameChange(void){    //一个难度的砖块结束后，改变游戏�
       if (BrickArr[i].life) return;
     }
   }else{    //生命值为0，游戏结束
+    if (state == TWO_PLAYER) {        //单人模式直接返回mainUI
+      pthread_mutex_lock(&GameQuitMutex);
+      SocketSend(ServerSocket, "quit");
+    }
     ClientDrawText("You Lose!", WL_X, WL_Y, true);
-    if (state == ONE_PLAYER) {        //单人模式直接返回mainUI
-      SDL_Delay(WL_DELAY);
-      ClientGameQuit();
-    }else if (state == LOCAL_DEATH){  //多人模式
-
-    }else if (state == NET_DEATH){    //都
-
-    }else{
-      state = LOCAL_DEATH;
+    SDL_Delay(WL_DELAY);
+    ClientGameQuit();
+    if (state == TWO_PLAYER) {        //单人模式直接返回mainUI
+      pthread_mutex_unlock(&GameQuitMutex);
     }
     return;
   }
@@ -314,6 +314,7 @@ void ClientGameChange(void){    //一个难度的砖块结束后，改变游戏�
   //改变难度，判断游戏是否结束
   difficulty++;
   if (difficulty > HARD) {
+    SocketSend(ServerSocket, "quit");
     ClientDrawText("You Win!", WL_X, WL_Y, true);
     SDL_Delay(WL_DELAY);
     ClientGameQuit();
@@ -340,8 +341,18 @@ void ClientGameChange(void){    //一个难度的砖块结束后，改变游戏�
     BrickArrCreate(BrickArr);
   }else {
     NetBall = calloc(1, sizeof(Ball));
-
-    //TODO
+    //创建砖块
+    char SendTemp[BUF_SIZE] = {0}, RecTemp[BUF_SIZE] = {0};
+    sprintf(SendTemp, "BrickOrder%d", difficulty);
+    SocketSend(ServerSocket, SendTemp);
+    SocketReceive(ServerSocket, RecTemp);
+    char *brk_ptr = RecTemp;
+    for (int i = 0; i < BrickNum[difficulty]; i++) {
+      int x = strtol(brk_ptr, &brk_ptr, 10);
+      int y = strtol(brk_ptr, &brk_ptr, 10);
+      Element color = strtol(brk_ptr, &brk_ptr, 10);
+      BrickCreate(&BrickArr[i], x, y, color);
+    }
   }
   //解锁GameChangeMutex
   if (state != MAIN && state != ONE_PLAYER) {
@@ -355,7 +366,7 @@ void ClientGameQuit(void){
   if (state != ONE_PLAYER) {
     pthread_cancel(TransmissionThread);
     pthread_join(TransmissionThread, NULL);
-    SocketSend(ServerSocket, "quit");
+    SocketSend(ServerSocket, "abort");
     BallDestroy(NetBall);
     BoardDestroy(NetBoard);
     pthread_mutex_destroy(&BoardMoveMutex);
@@ -363,6 +374,7 @@ void ClientGameQuit(void){
     pthread_mutex_destroy(&GameChangeMutex);
     pthread_cond_destroy(&GameChangeCond);
     pthread_mutex_destroy(&NetQuitMutex);
+    pthread_mutex_destroy(&GameQuitMutex);
   }
   BrickArrDestroy(BrickArr);
   BrickPre = false;
@@ -470,7 +482,7 @@ void* ClientTransmissionThread(void* ThreadArgv){
         SocketSend(ServerSocket, Send);
         SocketReceive(ServerSocket, Receive);
         //对方异常退出
-        if (!strcmp(Receive, "quit")){
+        if (!strcmp(Receive, "abort")){
           pthread_mutex_lock(&NetQuitMutex);
           ClientDrawText("Player Disconnect", USER_TIP_X, USER_TIP_Y, true);
           BallDestroy(NetBall);
@@ -500,8 +512,9 @@ void* ClientTransmissionThread(void* ThreadArgv){
 }
 
 void ClientDataResolve(char* buf, bool flag){    //客户端数据解析
-  //锁定GameChangeMutex
+  //锁定Mutex
   pthread_mutex_lock(&GameChangeMutex);
+  pthread_mutex_lock(&GameQuitMutex);
   //数据解析
   if (flag == CLIENT_TO_SERVER){        //客户端数据转换为服务端数据
     //改变游戏难度
@@ -532,8 +545,9 @@ void ClientDataResolve(char* buf, bool flag){    //客户端数据解析
       ClientQuit(NUM_ERROR);
     }
   }
-  //解锁GameChangeMutex
+  //解锁Mutex
   GameChangeFlag = false;
+  pthread_mutex_unlock(&GameQuitMutex);
   pthread_mutex_unlock(&GameChangeMutex);
 }
 
@@ -570,7 +584,7 @@ void ClientRender(void){    //客户端UI渲染
       SDL_RenderCopyF(Renderer, LocalBall->tex, NULL, &LocalBall->DestRect);
       SDL_DestroyTexture(LocalBall->tex);
     }
-    if (state != ONE_PLAYER && state != NET_DEATH && NetBoard->life) {
+    if (state != ONE_PLAYER && NetBoard->life) {
       NetBoard->tex = SDL_CreateTextureFromSurface(Renderer, NetBoard->sur);
       SDL_SetTextureBlendMode(NetBoard->tex, SDL_BLENDMODE_BLEND);
       SDL_SetTextureAlphaMod(NetBoard->tex, NetBoard->alpha);
@@ -629,7 +643,7 @@ void BoardCreate(Board* const board, const bool color){   //创建Board对象
 }
 
 void BoardMove(Board* board, Ball* const ball, SDL_KeyCode const operation){   //弹板移动
-  if (state != MAIN && state != LOCAL_DEATH){
+  if (state != MAIN){
     if (state != ONE_PLAYER){
       pthread_mutex_lock(&BoardMoveMutex);
     }

@@ -105,8 +105,6 @@ typedef enum game_state{          //游戏状态
   MAIN = 0,
   ONE_PLAYER = 1,
   TWO_PLAYER = 2,
-  LOCAL_DEATH = 3,
-  NET_DEATH = 4
 }game_state;
 
 typedef enum game_difficulty{     //游戏难度
@@ -208,7 +206,7 @@ static const char*  BrickPathVec[]  = { "img/FireBrick.png",
 
 static pthread_t        TransmissionThread;
 static int              ThreadArg = 0;
-static pthread_mutex_t  GameInitMutex, GameWaitMutex, GameChangeMutex, BoardMoveMutex, NetQuitMutex;
+static pthread_mutex_t  GameInitMutex, GameWaitMutex, GameChangeMutex, BoardMoveMutex, NetQuitMutex, GameQuitMutex;
 static pthread_cond_t   GameInitCond, GameWaitCond, GameChangeCond, BoardMoveCond;
 
 static Board* LocalBoard;
@@ -249,7 +247,7 @@ static const char*  SoundPathVec[]  = { "msc/thunder.mp3",
 
 void  ClientCfgInit(void);
 void  ClientLibInit(void);
-void  ClientIPInit(char *IP, u_short port, bool flag);
+void  ClientIPInit(const char *IP, u_short port);
 void  ClientLoadResource(void);
 void  ClientEventLoop(void);
 void  ClientGameInit(void);
