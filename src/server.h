@@ -19,7 +19,7 @@
 
 //宏定义
 
-#define BUF_SIZE 1000
+#define BUF_SIZE 2000
 
 #define IP_FAILURE      1
 #define SOCKET_FAILURE  2
@@ -45,15 +45,15 @@ static SOCKADDR_IN      ServerAddr;
 static SOCKADDR_IN      ClientAddr[2];
 static int              ClientNumber = 0;
 static int              mod = 0;
-static int              difficulty = 0;
-static int              BoardX[2] = {0};
-static int              BoardY[2] = {0};
-static int              BoardLife[2] = {0};
-static int              BrickLife[90] = {0};
+static volatile int     difficulty = 0;
+static volatile int     BoardX[2] = {0};
+static volatile int     BoardY[2] = {0};
+static volatile int     BoardLife[2] = {0};
+static volatile int     BrickLife[90] = {0};
 static const int        BrickNum[] = {30, 60, 90};
 static char             BrickOrder[BUF_SIZE] = {0};
-static float            BallX[2] = {0};
-static float            BallY[2] = {0};
+static volatile float   BallX[2] = {0};
+static volatile float   BallY[2] = {0};
 static volatile bool    PlayerQuit = false;
 static volatile bool    BrickFlag = false;
 

@@ -54,6 +54,7 @@ int recordf(const char *format, ...) {
     __builtin_va_start(local_argv, format);
     retval = __mingw_vfprintf(LogFilePtr, format, local_argv);
     __builtin_va_end(local_argv);
+    fflush(LogFilePtr);
     return retval;
   }
   return 0;
@@ -71,6 +72,7 @@ int recordf(const char *format, ...) {
 do {                                \
   recordf(format, ##argv);          \
   fprintf(stderr, format, ##argv);  \
+  fflush(stderr);                   \
 }while (0)
 
 /**
@@ -91,6 +93,7 @@ int debugf_b(const char *format, ...) {
   __builtin_va_start(local_argv, format);
   retval = __mingw_vfprintf(stdout, format, local_argv);
   __builtin_va_end(local_argv);
+  fflush(stdout);
   return retval;
 #else
   return 0;
@@ -121,6 +124,7 @@ int debugf_d(const int line, const char *func, const char *file, const char *for
   retval = __mingw_vfprintf(stdout, format, local_argv);
   __builtin_va_end(local_argv);
   printf("\n");
+  fflush(stdout);
   return retval;
 #else
   return 0;

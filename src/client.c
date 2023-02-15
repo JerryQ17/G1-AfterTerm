@@ -311,10 +311,10 @@ void ClientGameChange(void){    //一个难度的砖块结束后，改变游戏�
     pthread_mutex_lock(&GameChangeMutex);
     GameChangeFlag = true;
   }
-  //改变难度，判断游戏是否结束
-  difficulty++;
-  if (difficulty > HARD) {
+  //判断游戏是否结束
+  if (difficulty + 1 > HARD) {
     SocketSend(ServerSocket, "quit");
+    ClientRender();
     ClientDrawText("You Win!", WL_X, WL_Y, true);
     SDL_Delay(WL_DELAY);
     ClientGameQuit();
@@ -328,6 +328,9 @@ void ClientGameChange(void){    //一个难度的砖块结束后，改变游戏�
   if (state != ONE_PLAYER){
     BallDestroy(NetBall);
   }
+  //改变难度
+  difficulty++;
+  ClientPlayBGM();
   //重新为对象申请空间
   LocalBoard = calloc(1, sizeof(Board));
   NetBoard = calloc(1, sizeof(Board));
@@ -483,23 +486,10 @@ void* ClientTransmissionThread(void* ThreadArgv){
         SocketReceive(ServerSocket, Receive);
         //对方异常退出
         if (!strcmp(Receive, "abort")){
-          pthread_mutex_lock(&NetQuitMutex);
-          ClientDrawText("Player Disconnect", USER_TIP_X, USER_TIP_Y, true);
-          BallDestroy(NetBall);
-          pthread_mutex_destroy(&BoardMoveMutex);
-          pthread_cond_destroy(&BoardMoveCond);
-          BrickArrDestroy(BrickArr);
-          BrickPre = false;
-          BallDestroy(LocalBall);
-          BoardDestroy(LocalBoard);
-          ThreadArg = 0;
-          state = MAIN;
-          SDL_Delay(OFFLINE_DELAY);
-          ClientRender();
-          ClientPlayBGM();
           pthread_mutex_unlock(&NetQuitMutex);
-          pthread_mutex_destroy(&NetQuitMutex);
-          pthread_exit(NULL);
+          errorf("Player Disconnect\n");
+          SDL_Delay(OFFLINE_DELAY);
+          ClientQuit(EXIT_SUCCESS);
         }
         ClientDataResolve(Receive, SERVER_TO_CLIENT);
         pthread_mutex_unlock(&BoardMoveMutex);
@@ -602,14 +592,15 @@ void ClientRender(void){    //客户端UI渲染
   }
 }
 
-void ClientPlayBGM(void){
+void ClientPlayBGM(void){   //播放BGM
   Mix_HaltMusic();
-  bgm = Mix_LoadMUS(BgmPathVec[state]);
-  Mix_VolumeMusic(BgmVolumeVec[state]);
+  int num = state == MAIN ? state : difficulty + 1;
+  bgm = Mix_LoadMUS(BgmPathVec[num]);
+  Mix_VolumeMusic(BgmVolumeVec[num]);
   Mix_PlayMusic(bgm, -1);
 }
 
-void ClientPlaySound(int num){
+void ClientPlaySound(int num){    //播放音效
   sound = Mix_LoadWAV(SoundPathVec[num]);
   Mix_PlayChannel(-1, sound, 0);
 }
@@ -811,7 +802,7 @@ void BallHit(Ball* ball, Brick* brick, const char* mode){   //小球与对象的
     ball->board->alpha = (uint8_t)((double)(ball->board->life) / BoardLifeVec[difficulty] * UINT8_MAX);
     ball->board->DestRect.x = state == ONE_PLAYER ?
                               (WIN_WIDTH - ball->board->SourceRect.w) / 2 :
-                              WIN_WIDTH * (GameCondition.LocalNum == RED ? 1 : 3) / 4 - ball->board->SourceRect.w / 2;
+                              WIN_WIDTH * (GameCondition.LocalNum == RED ? 3 : 1) / 4 - ball->board->SourceRect.w / 2;
     ball->board->DestRect.y = BOARD_INIT_Y;
     if (state != ONE_PLAYER) {
       pthread_mutex_unlock(&BoardMoveMutex);
@@ -822,6 +813,7 @@ void BallHit(Ball* ball, Brick* brick, const char* mode){   //小球与对象的
     ball->dir = VERTICAL;
     ball->k = BallInitialK;
     ball->element = EMPTY;
+    ball->sur = IMG_Load(BallPathVec[EMPTY]);
     ball->DestRect.x = (float)ball->board->DestRect.x + (float)(ball->board->DestRect.w - ball->sur->w) / 2;
     ball->DestRect.y = (float)ball->board->DestRect.y - (float)ball->sur->h;
   }else if (!strcmp(mode, "sl")){                       //屏幕左侧

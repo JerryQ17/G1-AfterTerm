@@ -104,21 +104,24 @@ _Noreturn void* ServerTransmissionThread(void* ThreadArgv){
   pthread_cond_init(&TransmissionCond[ARG], NULL);
   char SendBuf[BUF_SIZE] = {0}, RecBuf[BUF_SIZE] = {0};
   while (true) {
+    bool flag = true;
     SocketReceive(ClientSocket[ARG], RecBuf);
     if (PlayerQuit){
-      SocketSend(ClientSocket[ARG], "quit");
+      SocketSend(ClientSocket[ARG], "abort");
       ServerQuit(EXIT_SUCCESS);
     }
     /*ServerDataResolve(RecBuf, ARG, SERVER_TO_CLIENT);*/
     if (!strcmp(RecBuf, "ConnectRequest")) {
       sprintf(SendBuf, "%d", ARG);
       SocketSend(ClientSocket[ARG], SendBuf);
+      flag = false;
     }else if (!strcmp(RecBuf, "ClientReady")) {
       pthread_mutex_lock(&GameInitMutex);
       if (ARG) pthread_cond_signal(&GameInitCond);
       else pthread_cond_wait(&GameInitCond, &GameInitMutex);
       sprintf(SendBuf, "GameStart%d", difficulty);
       SocketSend(ClientSocket[ARG], SendBuf);
+      flag = false;
       pthread_mutex_unlock(&GameInitMutex);
     }else if (strstr(RecBuf, "BrickOrder")) {
       if (!ARG) {
@@ -130,11 +133,14 @@ _Noreturn void* ServerTransmissionThread(void* ThreadArgv){
         while (!BrickFlag);
       }
       SocketSend(ClientSocket[ARG], BrickOrder);
+      flag = false;
     }else{
       ServerDataResolve(RecBuf, ARG, CLIENT_TO_SERVER);
     }
-    /*ServerDataResolve(SendBuf, ARG, SERVER_TO_CLIENT);
-    SocketSend(ClientSocket[ARG], SendBuf);*/
+    if (flag) {
+      ServerDataResolve(SendBuf, ARG, SERVER_TO_CLIENT);
+      SocketSend(ClientSocket[ARG], SendBuf);
+    }
     memset(SendBuf, 0, BUF_SIZE);
     memset(RecBuf, 0, BUF_SIZE);
   }
@@ -158,7 +164,7 @@ void ServerDataResolve(char* buf, int ThreadNum, bool flag){    //服务端数�
         BoardY[ThreadNum] = strtol(ptr, &ptr, 10);
         BallX[ThreadNum] = strtof(ptr, &ptr);
         BallY[ThreadNum] = strtof(ptr, &ptr);
-        for (int i = 0; i < BrickNum[difficulty]; i++){
+        for (int i = 0; i < BrickNum[difficulty]; i++) {
           BrickLife[i] = strtol(ptr, &ptr, 10);
         }
       }else{

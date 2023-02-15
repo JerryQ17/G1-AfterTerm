@@ -28,7 +28,7 @@
 #define WIN_HEIGHT  720                       //窗口高度
 #define FONT_SIZE   60                        //字体大小
 #define CFG_ITEM    4                         //配置数量
-#define BUF_SIZE    1000                      //缓冲大小
+#define BUF_SIZE    2000                      //缓冲大小
 #define FRAME_RATE  60
 #define REACT_BONUS 1                         //反应奖励
 
