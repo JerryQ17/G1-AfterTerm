@@ -242,8 +242,7 @@ static const int    BgmVolumeVec[]  = {100, 45, 60, 80, 70};
 static const char*  BgmPathVec[]    = { "msc/George Duke-It's On.mp3",
                                         "msc/Tennis-I'm Callin'.mp3",
                                         "msc/Nieve-WriteThisDown.mp3",
-                                        "msc/Swollen Members-Fuel Injected.mp3",
-                                        "msc/Lakey-Inspired-The-Process.mp3"};
+                                        "msc/Swollen Members-Fuel Injected.mp3"};
 static const char*  SoundPathVec[]  = { "msc/taser_shoot.wav",
                                         "msc/bomb.mp3",
                                         "msc/hpain1.wav",
