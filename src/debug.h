@@ -60,6 +60,10 @@ int recordf(const char *format, ...) {
   return 0;
 }
 
+#ifdef errorf
+#undef errorf
+#endif
+
 /**
  * @name errorf
  * @category 宏
@@ -68,12 +72,14 @@ int recordf(const char *format, ...) {
  * @details 在日志和标准误差流中记录错误
  * @sa recordf
  */
+
 #define errorf(format, argv...)     \
 do {                                \
   recordf(format, ##argv);          \
   fprintf(stderr, format, ##argv);  \
   fflush(stderr);                   \
 }while (0)
+
 
 /**
  * @name debugf_b
@@ -123,13 +129,17 @@ int debugf_d(const int line, const char *func, const char *file, const char *for
   __builtin_va_start(local_argv, format);
   retval = __mingw_vfprintf(stdout, format, local_argv);
   __builtin_va_end(local_argv);
-  printf("\n");
+  putchar('\n');
   fflush(stdout);
   return retval;
 #else
   return 0;
 #endif  //MY_DEBUG_FLAG__NJU_SE_2022__
 }
+
+#ifdef debugf
+#undef debugf
+#endif
 
 /**
  * @name debugf
@@ -148,7 +158,7 @@ int debugf_d(const int line, const char *func, const char *file, const char *for
  * @category 函数
  * @param buf 指向目标数组的指针，用来复制产生的字符串
  * @param BufSize 被复制到buf的最大字符数
- * @param format 格式串，如果为NULL，则默认为"%Y-%m-%d %H:%M:%S"形式
+ * @param format 格式串，如果为NULL，则默认为"%Y-%m-%d %H:%M:%S"
  * @return 如果产生的字符串小于BufSize个字符（包括空结束字符），则会返回复制到buf中的字符总数（不包括空结束字符），否则返回零
  * @details
  * 说明符  替换为                 样例\n
@@ -192,6 +202,10 @@ size_t formatTime(char* buf, size_t BufSize, const char* format){
  * @details 使用formatTime函数的简便方式
  * @sa formatTime
  */
+
+#ifdef FormatTime
+#undef FormatTime
+#endif
 
 #define FormatTime(buf) formatTime(buf, sizeof(buf), NULL)
 

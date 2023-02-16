@@ -109,7 +109,7 @@ typedef enum game_state{          //游戏状态
 
 typedef enum game_difficulty{     //游戏难度
   EASY = 0,
-  NORMAL = 1,
+  NORMAL __attribute__((unused)) = 1,
   HARD = 2
 }game_difficulty;
 
@@ -150,6 +150,7 @@ typedef enum BallDir{             //弹球方向
 typedef struct Ball{              //弹球
   int score;
   int hit;
+  bool bounce;
   bool SetOff;
   BallDir dir;
   double k;
@@ -197,7 +198,11 @@ static const char*  BallPathVec[]       = { "img/FireBall.png",
 static Brick*       BrickArr        = NULL;
 static bool         BrickPre        = false;
 static const int    BrickLifeVec[]  = {1, 2, 3};
+#ifdef MY_DEBUG_FLAG__NJU_SE_2022__
+static const int    BrickNum[]      = {1, 1, 1};
+#else
 static const int    BrickNum[]      = {30, 60, 90};
+#endif
 static const char*  BrickPathVec[]  = { "img/FireBrick.png",
                                         "img/WaterBrick.png",
                                         "img/IceBrick.png",
@@ -239,9 +244,10 @@ static const char*  BgmPathVec[]    = { "msc/George Duke-It's On.mp3",
                                         "msc/Nieve-WriteThisDown.mp3",
                                         "msc/Swollen Members-Fuel Injected.mp3",
                                         "msc/Lakey-Inspired-The-Process.mp3"};
-static const char*  SoundPathVec[]  = { "msc/thunder.mp3",
+static const char*  SoundPathVec[]  = { "msc/taser_shoot.wav",
                                         "msc/bomb.mp3",
-                                        "msc/death.mp3"};
+                                        "msc/hpain1.wav",
+                                        "msc/molotov_extinguish.wav"};
 
 //函数声明
 

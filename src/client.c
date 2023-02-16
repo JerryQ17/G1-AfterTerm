@@ -6,8 +6,7 @@ int SDL_main(int argc, char* argv[]){
   ClientCfgInit();
   if (argc == 3) {
     ClientIPInit(argv[1], (u_short) strtol(argv[2], NULL, 10));
-  }
-  else {
+  } else {
     errorf("Invalid argv\n");
     ClientIPInit(NULL, 0);
   }
@@ -118,10 +117,10 @@ void ClientIPInit(const char *IP, u_short port){      //获取服务器的IP地�
       errorf("ClientIPInit: IP initialization failed, over step\n");
       ClientQuit(IP_FAILURE);
     }
-    printf("Input Server IP:\n");
+    puts("Input Server IP:");
     scanf("%s", ServerIP);
     char PortInput[10] = {0};
-    printf("Input Server Port:\n");
+    puts("Input Server Port:");
     scanf("%s", PortInput);
     ServerPort = (u_short)strtol(PortInput, NULL, 10);
     strncpy(tmpIP, ServerIP, 7);
@@ -301,19 +300,25 @@ void ClientGameChange(void){    //一个难度的砖块结束后，改变游戏�
     ClientDrawText("You Lose!", WL_X, WL_Y, true);
     SDL_Delay(WL_DELAY);
     ClientGameQuit();
-    if (state == TWO_PLAYER) {        //单人模式直接返回mainUI
+    if (state == TWO_PLAYER) {
       pthread_mutex_unlock(&GameQuitMutex);
     }
     return;
   }
   //锁定GameChangeMutex
-  if (state != MAIN && state != ONE_PLAYER) {
+  if (state == TWO_PLAYER) {
     pthread_mutex_lock(&GameChangeMutex);
     GameChangeFlag = true;
   }
   //判断游戏是否结束
-  if (difficulty + 1 > HARD) {
+  if (state == TWO_PLAYER && difficulty + 1 >= NORMAL) {
     SocketSend(ServerSocket, "quit");
+    ClientRender();
+    ClientDrawText("You Win!", WL_X, WL_Y, true);
+    SDL_Delay(WL_DELAY);
+    ClientGameQuit();
+    return;
+  }else if (state == ONE_PLAYER && difficulty + 1 > HARD) {
     ClientRender();
     ClientDrawText("You Win!", WL_X, WL_Y, true);
     SDL_Delay(WL_DELAY);
@@ -684,6 +689,7 @@ void BoardDestroy(Board* const board){   //销毁Board对象
 void BallCreate(Ball* ball, Board* const board){   //创建Ball对象
   ball->score = 0;
   ball->hit = 0;
+  ball->bounce = true;
   ball->SetOff = false;
   ball->dir = VERTICAL;
   ball->k = BallInitialK;
@@ -740,7 +746,7 @@ void BallMove(Ball* const ball){            //小球移动
   //碰撞检查
   if (flag) {
     if (ObjectMaxY(ball) >= WIN_HEIGHT) {                       //如果小球碰到屏幕底端，生命值-1，并重置小球和弹板的位置
-      BallHit(ball, NULL, "sd");
+      BallHit(ball, NULL, (mod && ball->score % 10 == 0) ? "su" : "sd");
     } else if (ObjectMinX(ball) <= 0) {                         //如果小球碰到屏幕左端，反弹
       BallHit(ball, NULL, "sl");
     } else if (ObjectMaxX(ball) >= WIN_WIDTH) {                 //如果小球碰到屏幕右端，反弹
@@ -770,28 +776,36 @@ void BallHit(Ball* ball, Brick* brick, const char* mode){   //小球与对象的
   if (!strcmp(mode, "bu") || !strcmp(mode, "bd")){    //砖块上方或下方
     ElementReact(ball, brick);
     ball->hit++;
-    ball->k = -ball->k;
+    if (ball->bounce) {
+      ball->k = -ball->k;
+    }
     ball->score++;
     brick->life--;
     brick->alpha = (uint8_t)((double)(brick->life) / BrickLifeVec[difficulty] * UINT8_MAX);
   }else if (!strcmp(mode, "bl")){                     //砖块左侧
     ElementReact(ball, brick);
     ball->hit++;
-    ball->dir = LEFT;
+    if (ball->bounce) {
+      ball->dir = LEFT;
+      ball->k = -ball->k;
+    }
     ball->score++;
-    ball->k = -ball->k;
     brick->life--;
     brick->alpha = (uint8_t)((double)(brick->life) / BrickLifeVec[difficulty] * UINT8_MAX);
   }else if (!strcmp(mode, "br")){                       //砖块右侧
     ElementReact(ball, brick);
     ball->hit++;
-    ball->dir = RIGHT;
+    if (ball->bounce){
+      ball->dir = RIGHT;
+      ball->k = -ball->k;
+    }
     ball->score++;
-    ball->k = -ball->k;
     brick->life--;
     brick->alpha = (uint8_t)((double)(brick->life) / BrickLifeVec[difficulty] * UINT8_MAX);
   }else if (!strcmp(mode, "su")){                       //屏幕上方
     ball->k = -ball->k;
+    ball->hit = 0;
+    ball->bounce = true;
   }else if (!strcmp(mode, "sd")){                       //屏幕下方
     ClientPlaySound(2);
     //先修改挡板的属性
@@ -809,6 +823,7 @@ void BallHit(Ball* ball, Brick* brick, const char* mode){   //小球与对象的
     }
     //再修改小球的属性
     ball->hit = 0;
+    ball->bounce = true;
     ball->SetOff = false;
     ball->dir = VERTICAL;
     ball->k = BallInitialK;
@@ -818,9 +833,13 @@ void BallHit(Ball* ball, Brick* brick, const char* mode){   //小球与对象的
     ball->DestRect.y = (float)ball->board->DestRect.y - (float)ball->sur->h;
   }else if (!strcmp(mode, "sl")){                       //屏幕左侧
     ball->dir = RIGHT;
+    ball->hit = 0;
+    ball->bounce = true;
     ball->k = -ball->k;
   }else if (!strcmp(mode, "sr")){                       //屏幕右侧
     ball->dir = LEFT;
+    ball->hit = 0;
+    ball->bounce = true;
     ball->k = -ball->k;
   }else{
     errorf("BallHit: Incompatible Mode\n");
@@ -871,8 +890,7 @@ void BrickDestroy(Brick* const brick){
 
 void ElementReact(Ball* ball, Brick* brick) {
   //检查反应条件
-  if (!mod && brick->life == 0 || ball->board->life == 0) return;
-  debugf("ball->element = %d", ball->element);
+  if (!(mod && brick->life > 0 && ball->board->life > 0)) return;
   //进行反应
   const Element BallElement = ball->element;
   const Element BrickElement = brick->element;
@@ -880,6 +898,7 @@ void ElementReact(Ball* ball, Brick* brick) {
   if ((BallElement == FIRE && BrickElement == THUNDER) || (BallElement == THUNDER && BrickElement == FIRE)) {
     /*火元素和雷元素相遇会爆炸，对半径一定范围内的砖块全部造成一次攻击*/
     ball->element = EMPTY;
+    ball->sur = IMG_Load(BallPathVec[EMPTY]);
     ball->score += (brick->life + REACT_BONUS);
     brick->life = 0;
     for (int i = 0; i < BrickNum[difficulty]; i++) {
@@ -892,7 +911,9 @@ void ElementReact(Ball* ball, Brick* brick) {
     }
     ClientPlaySound(1);
   }else if ((BallElement == WATER || BallElement == ICE) && BrickElement == THUNDER) {
-    /*水元素小球或冰元素小球撞击雷元素砖块会引发链式反应，导致相邻的水元素砖块全部受到一次攻击*/
+    /*水元素或冰元素小球撞击雷元素砖块会引发链式反应，导致相邻的水元素砖块全部受到一次攻击*/
+    ball->element = EMPTY;
+    ball->sur = IMG_Load(BallPathVec[EMPTY]);
     for (int i = 0; i < BrickNum[difficulty]; i++) {
       if (BrickArr[i].life && (BrickArr[i].element == WATER || BrickArr[i].element == ICE) &&
           abs(ObjectMinX(&BrickArr[i]) - ObjectMinX(brick)) <= brick->DestRect.w &&
@@ -902,6 +923,15 @@ void ElementReact(Ball* ball, Brick* brick) {
       }
     }
     ClientPlaySound(0);
+  }else if (BallElement == THUNDER && BrickElement == ICE) {
+    /*雷元素小球与冰元素砖块相遇会强化小球，使其在下次与地图边界相撞并反弹前不会被砖块反弹*/
+    ball->bounce = false;
+    ball->score += REACT_BONUS;
+  }else if (BallElement + BrickElement == 1) {
+    /*水元素遇到火元素会消除小球的元素*/
+    ball->element = EMPTY;
+    ball->sur = IMG_Load(BallPathVec[EMPTY]);
+    ClientPlaySound(3);
   }else if (BallElement == EMPTY && BrickElement != EMPTY) {
     /*无元素小球撞击相应元素砖块会附着上相应元素*/
     ball->element = brick->element;
